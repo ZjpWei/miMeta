@@ -1,0 +1,23 @@
+Package: miMeta
+Type: Package
+Title: Meta-analysis of microbiome association studies
+Version: 0.1.0
+Author: Zhoujingpeng Wei, Guanhua Chen, Zheng-Zheng Tang
+Maintainer: Zhoujingpeng <zwei74@wisc.edu>
+Description: This R package implements the new methods for meta-analysis of microbiome association studies that respect the unique features of microbiome data such as compositionality. 
+License: GPL (>= 3) | file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+  MASS,
+  brglm2,
+  abess,
+  R6,
+  UpSetR
+RoxygenNote: 7.2.3
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+Depends: 
+    R (>= 4.1.0)
