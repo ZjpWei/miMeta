@@ -1,8 +1,7 @@
 #' @import abess
 
-## Utility file for meta-analysis
+######## Utility file for meta-analysis ########
 Get_lasso_pre = function(Melody){
-  ############################################################
   summary.stat.study <- Melody$summary.stat.study
   taxa.set <- Melody$taxa.set
   L <- Melody$dat.inf$L
@@ -11,8 +10,6 @@ Get_lasso_pre = function(Melody){
   for(l in 1:L){
     ref <- c(ref, match(summary.stat.study[[l]]$ref, Melody$dat.inf$taxa.names))
   }
-
-  ###########################################################
   taxa.mat <- NULL
   if(L == 1){
     idx = c(setdiff(1:K, ref[l]), ref[l])
@@ -47,7 +44,7 @@ Get_lasso_pre = function(Melody){
     k.l <- c(k.l, sum(taxa.set[[l]]))
   }
   for(l in 1:L){
-    ## Compute X and Y
+    ## Generate design matrix X and Y
     Sigma.chol <- chol(solve(summary.stat.study[[l]]$cov)/N)
     F.mat <- diag(mu.len)
     id.F <- taxa.mat[l,]
@@ -63,7 +60,6 @@ Get_lasso_pre = function(Melody){
       Y.enlarge.2 <- c(Y.enlarge.2, Sigma.chol %*% rep(1, sum(taxa.set[[l]])) )
     }
   }
-  ############################################################
   Melody$lasso.mat$X.enlarge <- X.col.1
   Melody$lasso.mat$Y.enlarge.1 <- Y.enlarge.1
   Melody$lasso.mat$Y.enlarge.2 <- Y.enlarge.2
@@ -77,9 +73,9 @@ Get_lasso_pre = function(Melody){
   return(Melody)
 }
 
-# Optimization function
+### Optimization function
 byabess_AA <- function(Melody, ref_est, support.size){
-  ############################################################
+  ### Load data
   summary.stat.study <- Melody$summary.stat.study
   taxa.set <- Melody$taxa.set
   X.enlarge <- Melody$lasso.mat$X.enlarge
@@ -92,7 +88,7 @@ byabess_AA <- function(Melody, ref_est, support.size){
   nonempty.id <- Melody$lasso.mat$nonempty.id
   empty.id <- Melody$lasso.mat$empty.id
   L <- Melody$dat.inf$L
-  ############################################################
+
   ref.shift <- c()
   if(length(ref_est) == 1){
     for(l in 1:L){
@@ -105,7 +101,7 @@ byabess_AA <- function(Melody, ref_est, support.size){
   }
   Y.enlarge <- Y.enlarge.1 + Y.enlarge.2 * ref.shift
 
-  ## Perform regression
+  ### Abess model
   result <- abess(x = X.enlarge,
                   y = Y.enlarge,
                   family = "gaussian",
@@ -123,15 +119,15 @@ byabess_AA <- function(Melody, ref_est, support.size){
   if(length(unique(Melody$dat.inf$ref)) == 1){
     mu.fit <- mu.fit[setdiff(names(mu.fit), unique(Melody$dat.inf$ref))]
   }
-  return(list(mu.fit = mu.fit, ref_est = ref_est, N = Melody$lasso.mat$N, q_loss = q_loss
-              #tune.type = result$tune.type, tune.value = result$tune.value, dev = result$dev, edf = result$edf,
-              #nobs = result$nobs, nvars = result$nvars
-              ))
+  return(list(mu.fit = mu.fit,
+              ref_est = ref_est,
+              N = Melody$lasso.mat$N,
+              q_loss = q_loss))
 }
 
 ### Calculate GIC
 GIC.cal <- function(result,
-                    tune.type = c("BIC", "KBIC", "HBIC", "EBIC")
+                    tune.type = c("HBIC", "BIC", "KBIC", "EBIC")
 ){
   tune.type <- match.arg(tune.type)
   df <- sum(result$mu.fit!=0)
@@ -149,8 +145,7 @@ GIC.cal <- function(result,
   }
 }
 
-# Search tune
-## Modified on 07/06/2023
+### Search delta
 search.ref.loc <- function(Melody,
                            study.l,
                            quantile_sm,
@@ -159,6 +154,7 @@ search.ref.loc <- function(Melody,
                            result,
                            initial.range = 0.1,
                            tune.type,
+                           tol = 1e-3,
                            verbose = FALSE){
   summary.stat.study <- Melody$summary.stat.study
   taxa.set <- Melody$taxa.set
@@ -166,7 +162,7 @@ search.ref.loc <- function(Melody,
   K <- Melody$dat.inf$K
   p.pi <- 2 / (sqrt(5) + 1)
   if(initial.range > 1){
-    stop("Search range should be smaller than 1 \n")
+    stop("Searching range should be smaller than 1 \n")
   }
   if(is.null(result)){
     s.1.prop <- rep(1/2, L)
@@ -201,14 +197,8 @@ search.ref.loc <- function(Melody,
     }
     if(s.1.GIC > GIC.result & s.2.GIC > GIC.result){
       loop.range <- FALSE
-      if(verbose){
-        cat(paste0(" (Search range proportion): ", s.2.prop[study.l] - s.1.prop[study.l], "."))
-      }
     }else if(s.1.prop[study.l] == 0 | s.2.prop[study.l] == 1){
       loop.range <- FALSE
-      if(verbose){
-        cat(paste0(" (Search range proportion): ", s.2.prop[study.l] - s.1.prop[study.l], "."))
-      }
     }
   }
   #####
@@ -221,55 +211,50 @@ search.ref.loc <- function(Melody,
   ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.right.prop)
   s.right.result <- byabess_AA(Melody = Melody, ref_est = - ref.quant, support.size = lambda)
   s.right.GIC <- GIC.cal(result = s.right.result, tune.type = tune.type)
-  #########
+  #####
   # we have:
   # s.1.result; s.1.GIC
   # s.2.result; s.2.GIC
   # s.left.result; s.left.GIC
   # s.right.result; s.right.GIC
-  #########
+  #####
   loop.study <- TRUE
   loop.times <- 0
   while(loop.study){
     ### check BIC; or prop
     s.all.prop <- c(s.1.prop[study.l], s.left.prop[study.l], s.right.prop[study.l], s.2.prop[study.l])
     s.all.GIC <-  c(s.1.GIC, s.left.GIC, s.right.GIC, s.2.GIC)
-    if(s.all.GIC[1] == min(s.all.GIC) & abs(s.all.prop[1] - s.all.prop[2]) <= 1e-3){
+    if(s.all.GIC[1] == min(s.all.GIC) & abs(s.all.prop[1] - s.all.prop[2]) <= tol){
       loop.study <- FALSE
-      ###
       s.new.prop <- s.1.prop
       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
       s.new.result <- byabess_AA(Melody = Melody, ref_est = - ref.quant, support.size = lambda)
       s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
       s.new.result$GIC.result <- s.new.GIC
-    }else if(s.all.GIC[4] == min(s.all.GIC) & abs(s.all.prop[4] - s.all.prop[3]) <= 1e-3){
+    }else if(s.all.GIC[4] == min(s.all.GIC) & abs(s.all.prop[4] - s.all.prop[3]) <= tol){
       loop.study <- FALSE
-      ###
       s.new.prop <- s.2.prop
       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
       s.new.result <- byabess_AA(Melody = Melody, ref_est = - ref.quant, support.size = lambda)
       s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
       s.new.result$GIC.result <- s.new.GIC
-    }else if(s.all.GIC[2] == min(s.all.GIC) & abs(s.all.prop[1] - s.all.prop[3]) <= 1e-3){
+    }else if(s.all.GIC[2] == min(s.all.GIC) & abs(s.all.prop[1] - s.all.prop[3]) <= tol){
       loop.study <- FALSE
-      ###
       s.new.prop <- (s.1.prop + s.right.prop) / 2
       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
       s.new.result <- byabess_AA(Melody = Melody, ref_est = - ref.quant, support.size = lambda)
       s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
       s.new.result$GIC.result <- s.new.GIC
-    }else if(s.all.GIC[3] == min(s.all.GIC) & abs(s.all.prop[2] - s.all.prop[4]) <= 1e-3){
+    }else if(s.all.GIC[3] == min(s.all.GIC) & abs(s.all.prop[2] - s.all.prop[4]) <= tol){
       loop.study <- FALSE
-      ###
       s.new.prop <- (s.left.prop + s.2.prop) / 2
       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
       s.new.result <- byabess_AA(Melody = Melody, ref_est = - ref.quant, support.size = lambda)
       s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
       s.new.result$GIC.result <- s.new.GIC
-    }else if(loop.times >= 300){
+    }else if(loop.times >= 100){
       loop.study <- FALSE
-      warning("Not converge. \n")
-      ###
+      warning("Search delta over 100 loops. Not converge. \n")
       s.new.prop <- (s.1.prop + s.2.prop) / 2
       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
       s.new.result <- byabess_AA(Melody = Melody, ref_est = - ref.quant, support.size = lambda)
@@ -277,7 +262,7 @@ search.ref.loc <- function(Melody,
       s.new.result$GIC.result <- s.new.GIC
     }
     if(min(s.all.GIC[1:2]) == min(s.all.GIC)){
-      #### minimum GIC at s.left or s.1
+      ### minimize GIC at s.left or s.1
       s.2.prop[study.l] <- s.right.prop[study.l]
       s.2.GIC <- s.right.GIC
       s.right.prop[study.l] <- s.left.prop[study.l]
@@ -287,7 +272,7 @@ search.ref.loc <- function(Melody,
       s.left.result <- byabess_AA(Melody = Melody, ref_est = - ref.quant, support.size = lambda)
       s.left.GIC <- GIC.cal(result = s.left.result, tune.type = tune.type)
     }else if(min(s.all.GIC[3:4]) == min(s.all.GIC)){
-      #### minimum GIC at s.right or s.2
+      ### minimize GIC at s.right or s.2
       s.1.prop[study.l] <- s.left.prop[study.l]
       s.1.GIC <- s.left.GIC
       s.left.prop[study.l] <- s.right.prop[study.l]
@@ -296,29 +281,24 @@ search.ref.loc <- function(Melody,
       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.right.prop)
       s.right.result <- byabess_AA(Melody = Melody, ref_est = - ref.quant, support.size = lambda)
       s.right.GIC <- GIC.cal(result = s.right.result, tune.type = tune.type)
-    }else{
-      stop("Have search errors.")
     }
+    ### Calculate loop time
     loop.times <- loop.times + 1
-  }
-  if(verbose){
-    cat(paste0(" (loop times for study ", study.l, "): ", loop.times, ".\n"))
   }
   return(list(study.min = s.new.prop, study.min.GIC = s.new.GIC, result = s.new.result))
 }
 
-# search all study
-## Modified on 07/09/2023
-search.subset.s <- function(Melody, L, quantile_sm, s.size, tmp.result, search.loc, GIC.result, initial.range, tune.type, verbose){
+### Utility function
+search.subset.s <- function(Melody, L, quantile_sm, s.size, tmp.result, search.loc, GIC.result, initial.range, tune.type, tol, verbose){
   loop <- TRUE
   loop.time <- 0
+  # if(verbose){
+  #   message(paste0("-- searching model with subset size:", s.size, " --"))
+  # }
   while(loop){
     search.loc.tmp <- search.loc
     GIC.result.tmp <- GIC.result
     for(l in 1:L){
-      if(verbose){
-        cat(paste0("(sequence loop:", s.size, "): ", "tuning study ", l, "."))
-      }
       tmp.search <- search.ref.loc(Melody = Melody,
                                    study.l = l,
                                    quantile_sm = quantile_sm,
@@ -327,6 +307,7 @@ search.subset.s <- function(Melody, L, quantile_sm, s.size, tmp.result, search.l
                                    result = tmp.result,
                                    initial.range = initial.range,
                                    tune.type = tune.type,
+                                   tol = tol,
                                    verbose = verbose)
       if(tmp.search$study.min.GIC < GIC.result.tmp){
         search.loc.tmp <- tmp.search$study.min
@@ -336,11 +317,11 @@ search.subset.s <- function(Melody, L, quantile_sm, s.size, tmp.result, search.l
     }
     loop.time <- loop.time + 1
     search.loc <- search.loc.tmp
-    if(abs(GIC.result - GIC.result.tmp) <= 1e-3){
+    if(abs(GIC.result - GIC.result.tmp) <= tol){
       loop <- FALSE
-    }else if(loop.time >= 300){
+    }else if(loop.time >= 100){
       loop <- FALSE
-      warning(paste0("Loop over 300 times for searching best subset of ", s, ".\n"))
+      warning(paste0("Loop over 100 times for searching best subset of ", s))
     }else{
       GIC.result <- GIC.result.tmp
     }
@@ -348,8 +329,7 @@ search.subset.s <- function(Melody, L, quantile_sm, s.size, tmp.result, search.l
   return(list(tmp.result = tmp.result, GIC.result = GIC.result, search.loc = search.loc))
 }
 
-# Calcalate
-## Modified on 08/21/2022
+### Utility function
 cal.quantile <- function(quantile_sm, prop){
   tmp_quant <- c()
   for(l in 1:length(prop)){
@@ -357,34 +337,3 @@ cal.quantile <- function(quantile_sm, prop){
   }
   return(tmp_quant)
 }
-
-# Melody.test
-## Modified on 08/31/2023
-melody.get.test <- function(Melody.model, 
-                            Melody,
-                            p.adjust.methods = c("fdr", "holm", "hochberg", "hommel", "bonferroni", "BH", "BY","none")
-){
-  
-  p.adjust.methods <- match.arg(p.adjust.methods)
-  
-  L <- Melody$dat.inf$L
-  K <- Melody$dat.inf$K
-  mu_mat <- matrix(NA, nrow = L, ncol = length(Melody$dat.inf$taxa.names),
-                   dimnames = list(paste0("crc",1:L), Melody$dat.inf$taxa.names))
-  sigma2_mat <- mu_mat
-  for(l in 1:L){
-    beta_hat <- Melody$summary.stat.study[[l]]$est
-    delta_hat <- Melody.model$ref_est[l]
-    sigma2 <- diag(Melody$summary.stat.study[[l]]$cov)
-    mu_mat[l,names(beta_hat)] <- (beta_hat - delta_hat) / sigma2
-    sigma2_mat[l,names(beta_hat)] <- 1 / sigma2
-  }
-  mu <- colSums(mu_mat, na.rm = TRUE) / colSums(sigma2_mat, na.rm = TRUE)
-  Var_mu <- 1 / colSums(sigma2_mat, na.rm = TRUE)
-  Z_sta <- mu / sqrt(Var_mu)
-  p.val <- 2 * pnorm(abs(Z_sta), lower.tail = FALSE)
-  q.val <- p.adjust(p.val, method = p.adjust.methods)
-  
-  return(list(p.val = p.val, q.val = q.val, p.adjust.methods = p.adjust.methods))
-}
-

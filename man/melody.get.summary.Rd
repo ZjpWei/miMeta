@@ -16,7 +16,6 @@ melody.get.summary(
   prev.filter = 0,
   ref = NULL,
   cov.type = c("diag", "ridge"),
-  keep.raw.data = FALSE,
   verbose = FALSE
 )
 }

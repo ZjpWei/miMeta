@@ -53,9 +53,9 @@
 
 melody.merge.summary <- function(melody.obj.lst, verbose = FALSE){
   num.lst <- length(melody.obj.lst)
-  ### Warning: User should check the taxa names before merging
-  warning("Please make sure the each taxon in different study uses the identical name.\n")
-  ### Create merged melody object
+  ### Warning: User should check the taxa names before merging summary statistics
+  warning("Please ensure that each taxon in different studies uses the identical name.\n")
+  ### Create a merged melody object
   summary.stat.study.merged <- Melody$new(dat = NULL)
   merged.taxa.names <- c()
   merged.ref <- c()
@@ -74,20 +74,21 @@ melody.merge.summary <- function(melody.obj.lst, verbose = FALSE){
   summary.stat.study.merged$dat.inf$K <- K
   summary.stat.study.merged$dat.inf$taxa.names <- merged.taxa.names
   summary.stat.study.merged$dat.inf$study.names <- merged.study.names
+
   ### Merge summary statistics and check the taxa names
   merged.taxa.set <- list()
   merged.summary.stats <- list()
   tmp.len <- 1
   for(l in 1:num.lst){
     for(ll in 1:melody.obj.lst[[l]]$dat.inf$L){
-      ### match taxa.set
+      ### align taxa.set
       tmp.taxa.set <- rep(FALSE, K-1)
       tmp.names <- setdiff(merged.taxa.names, merged.ref[tmp.len])
       names(tmp.taxa.set) <- tmp.names
       idx.taxa.set <- match(names(melody.obj.lst[[l]]$taxa.set[[ll]]), names(tmp.taxa.set))
       tmp.taxa.set[idx.taxa.set] <- melody.obj.lst[[l]]$taxa.set[[ll]]
       merged.taxa.set[[tmp.len]] <- tmp.taxa.set
-      ### match summary statistics
+      ### align summary statistics
       est <- rep(NA, K-1)
       names(est) <- tmp.names
       cov <- matrix(NA, K-1, K-1)
@@ -96,7 +97,6 @@ melody.merge.summary <- function(melody.obj.lst, verbose = FALSE){
       sandwich.cov <- matrix(NA, K-1, K-1)
       colnames(sandwich.cov) <- tmp.names
       rownames(sandwich.cov) <- tmp.names
-
       est[names(melody.obj.lst[[l]]$summary.stat.study[[ll]]$est)] <- melody.obj.lst[[l]]$summary.stat.study[[ll]]$est
       est <- est[tmp.taxa.set]
       cov[names(melody.obj.lst[[l]]$summary.stat.study[[ll]]$est),
@@ -105,12 +105,10 @@ melody.merge.summary <- function(melody.obj.lst, verbose = FALSE){
       sandwich.cov[names(melody.obj.lst[[l]]$summary.stat.study[[ll]]$est),
                    names(melody.obj.lst[[l]]$summary.stat.study[[ll]]$est)] <- melody.obj.lst[[l]]$summary.stat.study[[ll]]$sandwich.cov
       sandwich.cov <- sandwich.cov[tmp.taxa.set,tmp.taxa.set]
-      ###
       n <- melody.obj.lst[[l]]$summary.stat.study[[ll]]$n
       ref <- melody.obj.lst[[l]]$summary.stat.study[[ll]]$ref
       idx <- c(setdiff(1:K, match(ref, merged.taxa.names)), match(ref, merged.taxa.names))
       idx.rev = order(idx)
-      ### loop para
       merged.summary.stats[[tmp.len]] <- list(est = est, cov = cov, n = n, sandwich.cov = sandwich.cov,
                                               ref = ref, idx.rev = idx.rev)
       tmp.len <- tmp.len + 1
@@ -139,7 +137,7 @@ melody.merge.summary <- function(melody.obj.lst, verbose = FALSE){
       }
     }
 
-    # Plot
+    ### Generate Upset plot
     print(upset(fromExpression(input),
           keep.order=T,
           sets = summary.stat.study.merged$dat.inf$study.names,
@@ -152,7 +150,7 @@ melody.merge.summary <- function(melody.obj.lst, verbose = FALSE){
           text.scale = 1.1,
           point.size = 2.8,
           line.size = 1,
-          set_size.scale_max = max(unlist(input)) * 1.2,
+          set_size.scale_max = max(rowSums(taxa.mat)) * 1.2,
           set_size.show = TRUE
     ))
   }

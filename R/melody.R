@@ -36,7 +36,8 @@
 #' Default is  1:round(K/2), where K is number of microbial features.
 #' @param tune.size.range An integer vector with two elements that define the range of the size. Default is c(1, K/2)
 #' @param tune.type Type of information criterion for choosing the optimal tunning parameters. Available options are "BIC", "kBIC", and "mBIC".
-#' Default is "BIC".
+#' Default is "HBIC".
+#' @param tol Converge tolerance for detecting the best model. Default is 1e-3.
 #' @param ouput.best.one Whether only output the best model. Default is TRUE.
 #' @param verbose: whether to print verbose information. Default is FALSE. (see details in Value)
 #'
@@ -67,7 +68,7 @@
 #' (i.e. the number of microbial features selected) and delta's which are introduced to recover the
 #' absolute-abundance coefficients from the relative-abundance coefficients.
 #'
-#' @references Wei Z, Chen G, Tang ZZ. Melody selects generalizable microbial signatures in meta-analysis of microbiome association studies. Submitted.
+#' @references Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis. Submitted.
 #'
 #' @seealso \code{\link{melody.get.summary}},
 #' \code{\link{melody.meta.summary}},
@@ -107,17 +108,17 @@ melody <- function(rel.abd,
                    tune.path = c("gsection", "sequence"),
                    tune.size.sequence = NULL,
                    tune.size.range = NULL,
-                   tune.type = c("BIC", "KBIC", "HBIC", "EBIC"),
+                   tune.type = c("HBIC", "BIC", "KBIC", "EBIC"),
                    ouput.best.one = TRUE,
+                   tol = 1e-3,
                    verbose = FALSE
                    ) {
-  ## remove taxa with correlation with 1 in each study.
 
   cov.type <- match.arg(cov.type)
   tune.path <- match.arg(tune.path)
   tune.type <- match.arg(tune.type)
 
-  ## Add melody before function name
+  ### Generate summary statistics
   summary.stat.study <- melody.get.summary(rel.abd,
                                            sample.data,
                                            sample.id,
@@ -130,14 +131,15 @@ melody <- function(rel.abd,
                                            ref,
                                            cov.type,
                                            verbose)
-  ## merge.summary
 
+  ### Meta-analysis
   Melody.model <- melody.meta.summary(Melody = summary.stat.study,
                                       tune.path,
                                       tune.size.sequence,
                                       tune.size.range,
                                       tune.type,
                                       ouput.best.one,
+                                      tol,
                                       verbose)
 
   return(Melody.model)

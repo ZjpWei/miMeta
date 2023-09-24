@@ -17,7 +17,6 @@ vignette: >
   %\VignetteIndexEntry{miMeta}
   %\VignetteEncoding{UTF-8}  
   %\VignetteEngine{knitr::rmarkdown}
-# bibliography: references.bib
 editor_options: 
   chunk_output_type: console
 ---
@@ -30,36 +29,25 @@ editor_options:
 
 Download package from github.
 
-```{r getPackage, eval=FALSE}
-# if (!requireNamespace("BiocManager", quietly = TRUE))
-#     install.packages("BiocManager")
-# BiocManager::install("miMeta")
+```{r getPackage, echo=TRUE}
+library(devtools)
+install_github("ZjpWei/miMeta")
 ```
 
 Load the package. 
 
-```{r load, include=FALSE}
+```{r load, echo=TRUE}
 library(miMeta)
 library(tidyverse)
 library(DT)
 library(ggplot2)
 ```
 
+# Meta-analysis given all samples of all participating studies
 
-# Example Data
+There are two approaches miMeta can run meta-analysis. Approach #1: If the individual-level sample data across all participating studies are available, the function melody can take these data as input, generate summary statistics for each study internally, and combine the summary statistics to select microbial signatures. Approach #2: If individual-level samples of each study are not in a central place and/or come in sequentially, summary statistics can be generated for each study separately using the function melody.get.summary. Then, the summary statistics of all participating studies can be combined using the function melody.merge.summary, and finally, meta-analyzed using the function melody.meta.summary. We demonstrate Approach #1 in this session and Approach #2 in the next session.
 
-`miMeta` requires a properly formatted collection of microbial community studies, 
-with both feature abundances and accompanying metadata. Here we use the five published 
-colorectal cancer (CRC) stool metagenomic studies and the studies are already packaged.
-
-Importantly, `miMeta` asks that feature abundances be provided as a 
-feature-by-sample matrix, and the metadata be provided as a data frame. 
-The two objects should agree on sample IDs, that is, `colname` of the feature 
-abundance matrix and `sample.id` of the metadata data frame must agree. 
-
-To minimize users' efforts in loading data to run the examples, we only include 100 most abundant species in the example data. The feature abundances and metadata can be loaded with the following code chunk. For the interested user, the full data with 849 species can be found in the github data file (https://github.com/ZjpWei/miMeta).
-
-We consider the following covriates in meta data:
+Here we use the datasets from the five metagenomics studies of colorectal cancer (CRC) [2] to demonstrate the use of each function. The "CRC_abd" is a feature-by-sample matrix of species-level relative abundance counts from the five studies. For the easy of demonstration, we include 267 species under order *Clostridiales*.  The "meta" is a data frame including the sample-level variables from the five studies. In particular, the following variables are in the meta data:
 
 * Sample identity: "Sample_ID"
 
@@ -67,31 +55,36 @@ We consider the following covriates in meta data:
 
 * Disease status: "Group"
 
-```{r}
+```{r echo=TRUE}
 data("CRC_abd", "meta", package = "miMeta")
 table(meta[,c("Study", "Group")])
 ```
 
-# meta-analysis by one function `melody`
+By default, melody only output the information about the best model selected. If users want to see the information about all models of different sizes on the search path, set output.best.one=FALSE. See help(melody) for more details.
 
-One of the most common meta-analysis goals is to combine association effects across batches/studies to identify consistent overall effects. `melody` provides a straightforward interface to this task by first generating summary statistics in individual batches/studies, and then select the best-subset model by meta-analysis across the summary statistics. 
+The following is the coefficient of all the features in the best model (the features with non-zero coefficients are the selected signatures):
 
-```{r message=FALSE, warning=FALSE}
-# melody can analyze single study or multiple studies. Following is an example on 
-# single study.
-Melody.model <- melody(rel.abd = CRC_abd,
-                       sample.data = meta,
-                       sample.id = "Sample_ID",
-                       study = "Study",
-                       disease = "Group",
-                       tune.type = "HBIC")
+meta.result$coef
+
+If verbose=TRUE, generate two plots shown below and print information about the progress of meta-analysis. 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.cap="a plot for microbial feature overlap among studies: this plot shows the number of features shared among studies. "}
+# Pick a reference taxa
+ref <- "Coprococcus catus [ref_mOTU_v2_4874]"
+
+# melody can analyze single study or multiple studies. 
+meta.result <- melody(rel.abd = CRC_abd,
+                      sample.data = meta,
+                      sample.id = "Sample_ID",
+                      study = "Study",
+                      disease = "Group",
+                      ref = ref,
+                      verbose = TRUE)
 ```
 
-The `melody` result can determine the microbial features by the best model that's selected by information criterion according to the covriate of interest. It returns a list of more than one components. Depending on your input option for `ouput.best.one`, coef provides a estimates vector for best model or estimates matrix for all searched models. See help(melody) for more details. We can visualize the selected (non-zero in coef) species associated with CRC in these studies/samples as following.
-
-```{r}
-taxa_tab <- data.frame(taxa = names(which(Melody.model$coef!=0)),
-                       coef = as.numeric(Melody.model$coef[Melody.model$coef!=0]))
+```{r echo=FALSE, fig.cap="a plot showing the absolute-abundance coefficient estimates of the selected microbial features in the best model under the best subset size."}
+taxa_tab <- data.frame(taxa = names(which(meta.result$coef!=0)),
+                       coef = as.numeric(meta.result$coef[meta.result$coef!=0]))
 
 taxa_tab %>% arrange(coef) %>% 
   mutate(taxa = factor(taxa, levels = taxa)) %>% 
@@ -112,68 +105,74 @@ taxa_tab %>% arrange(coef) %>%
 
 ```
 
-# Calculate summary statsitics by `melody.get.summary` function
+# Meta-analysis given samples of one study at a time
 
-miMeta package performs meta-analysis by two steps. the first step is calculating the summary statistics; the second step is analyzing the summary statsitics across the batches/studies. Different from using one function in analysis, `melody.get.summary` returns the summary statistics (`Melody` object) in first step. 
+In this session, we demonstrate how to perform meta-analysis given samples of one study at a time. We separate "CRC_abd" and "meta" by study to prepare datasets for the demonstration:
 
-Followings are the result for `Melody` object.
+If the datasets of different studies live in different locations and cannot be conveniently transferred, we can first generate summary statistics for each study:
 
-* dat.inf: some information for the data
-
-    + L: study number
-    
-    + K: taxa number
-    
-    + taxa.names: taxa names across the studies.
-    
-    + ref: reference taxa for generating the summary statistics
-    
-* taxa.set: a list of vectors that indicate the presentation of each taxon in studies.
-
-* summary.stat.study: a list inlcudes summary statistis estimates and covriate matrix for each study.
-
-```{r message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Geneeate summary statistisc for each study
 meta_FR <- meta[meta$Study == "FR-CRC",]
-CRC_abd_FR <- CRC_abd[,meta_FR$Sample_ID]
-summary.FR <- melody.get.summary(rel.abd = CRC_abd_FR,
+summary.FR <- melody.get.summary(rel.abd = CRC_abd[,meta_FR$Sample_ID],
                                  sample.data = meta_FR,
                                  sample.id = "Sample_ID",
                                  study = "Study",
-                                 disease = "Group")
+                                 disease = "Group",
+                                 ref = ref)
+
+meta_DE <- meta[meta$Study == "DE-CRC",]
+summary.DE <- melody.get.summary(rel.abd = CRC_abd[,meta_DE$Sample_ID],
+                                 sample.data = meta_DE,
+                                 sample.id = "Sample_ID",
+                                 study = "Study",
+                                 disease = "Group",
+                                 ref = ref)
+
+meta_CN <- meta[meta$Study == "CN-CRC",]
+summary.CN <- melody.get.summary(rel.abd = CRC_abd[,meta_CN$Sample_ID],
+                                 sample.data = meta_CN,
+                                 sample.id = "Sample_ID",
+                                 study = "Study",
+                                 disease = "Group",
+                                 ref = ref)
+
+meta_US <- meta[meta$Study == "US-CRC",]
+summary.US <- melody.get.summary(rel.abd = CRC_abd[,meta_US$Sample_ID],
+                                 sample.data = meta_US,
+                                 sample.id = "Sample_ID",
+                                 study = "Study",
+                                 disease = "Group",
+                                 ref = ref)
+
+meta_AT <- meta[meta$Study == "AT-CRC",]
+summary.AT <- melody.get.summary(rel.abd = CRC_abd[,meta_AT$Sample_ID],
+                                 sample.data = meta_AT,
+                                 sample.id = "Sample_ID",
+                                 study = "Study",
+                                 disease = "Group",
+                                 ref = ref)
 ```
 
+The summary data can be sent to a central place and get merged:
 
-# Merge summary statsitics by `melody.merge.summary` function
-
-`melody.merge.summary` function can merge multiple summary statistics (`Melody` objects) from different batches/studies to single `Melody` object. The result can be directly applied to `melody.meta.summary` function for meta-analysis cross these batches/studies.
-
-```{r message=FALSE, warning=FALSE}
-# Generate summary statistics inclding study AT and CN
-meta_other <- meta[meta$Study %in% c("AT-CRC", "CN-CRC", "DE-CRC", "US-CRC"),]
-CRC_abd_other <- CRC_abd[,meta_other$Sample_ID]
-summary.other <- melody.get.summary(rel.abd = CRC_abd_other,
-                                    sample.data = meta_other,
-                                    sample.id = "Sample_ID",
-                                    study = "Study",
-                                    disease = "Group")
-
-summary.merge <- melody.merge.summary(list(summary.FR, summary.other))
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Merge summary statistics
+summary.merge <- melody.merge.summary(list(summary.FR, summary.DE, summary.CN, summary.US, summary.AT))
 ```
 
-# Meta-analysis by function `melody.meta.summary`
+The merged object can be used to run meta-analysis:
 
-`melody.meta.summary` need the `Melody` object from `melody.get.summary` or `melody.merge.summary` for further meta-analysis. Following example shows the meta-analysis cross three different batches/studies by merged summary statsitics.
-
-```{r}
-# meta-analysis for merged summary statistics
-Melody.model.merge <- melody.meta.summary(Melody = summary.merge, tune.type = "HBIC")
+```{r echo=TRUE}
+# Meta-analysis for merged summary statistics
+meta.result.merge <- melody.meta.summary(Melody = summary.merge, verbose = TRUE)
 ```
 
-We can visualize the selected (non-zero in coef) species associated with CRC in these studies/samples as following.
+The meta-analysis results generated in this way are identical to the results generated in the previous session.
 
-```{r}
-taxa_tab <- data.frame(taxa = names(which(Melody.model.merge$coef!=0)),
-                       coef = as.numeric(Melody.model.merge$coef[Melody.model.merge$coef!=0]))
+```{r echo=FALSE, fig.cap="a plot showing the absolute-abundance coefficient estimates of the selected microbial features in the best model under the best subset size by using merged summary statistics."}
+taxa_tab <- data.frame(taxa = names(which(meta.result$coef!=0)),
+                       coef = as.numeric(meta.result$coef[meta.result$coef!=0]))
 
 taxa_tab %>% arrange(coef) %>% 
   mutate(taxa = factor(taxa, levels = taxa)) %>% 
@@ -193,12 +192,13 @@ taxa_tab %>% arrange(coef) %>%
   geom_hline(aes(yintercept = 0),colour="#990000", linetype="dashed")
 
 ```
-
 # Session information
 
 ```{r}
 sessionInfo()
 ```
 
-# References
-Zhoujingpeng Wei, Guanhua Chen and Zheng-Zheng Tang
+# Reference
+1. Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis. Submitted.
+
+2. Wirbel, Jakob et al. Meta-analysis of fecal metagenomes reveals global microbial signatures that are specific for colorectal cancer. 

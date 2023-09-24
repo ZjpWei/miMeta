@@ -19,8 +19,9 @@ melody(
   tune.path = c("gsection", "sequence"),
   tune.size.sequence = NULL,
   tune.size.range = NULL,
-  tune.type = c("BIC", "KBIC", "HBIC", "EBIC"),
+  tune.type = c("HBIC", "BIC", "KBIC", "EBIC"),
   ouput.best.one = TRUE,
+  tol = 0.001,
   verbose = FALSE
 )
 }
@@ -70,9 +71,11 @@ Default is  1:round(K/2), where K is number of microbial features.}
 \item{tune.size.range}{An integer vector with two elements that define the range of the size. Default is c(1, K/2)}
 
 \item{tune.type}{Type of information criterion for choosing the optimal tunning parameters. Available options are "BIC", "kBIC", and "mBIC".
-Default is "BIC".}
+Default is "HBIC".}
 
 \item{ouput.best.one}{Whether only output the best model. Default is TRUE.}
+
+\item{tol}{Converge tolerance for detecting the best model. Default is 1e-3.}
 
 \item{verbose:}{whether to print verbose information. Default is FALSE. (see details in Value)}
 }
@@ -126,7 +129,7 @@ Melody.model <- melody(rel.abd = CRC_abd_FR,
 
 }
 \references{
-Wei Z, Chen G, Tang ZZ. Melody selects generalizable microbial signatures in meta-analysis of microbiome association studies. Submitted.
+Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis. Submitted.
 }
 \seealso{
 \code{\link{melody.get.summary}},

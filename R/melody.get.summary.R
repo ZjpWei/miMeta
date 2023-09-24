@@ -14,6 +14,8 @@
 #' @seealso \code{\link{melody}},
 #' \code{\link{melody.meta.summary}},
 #' \code{\link{melody.merge.summary}}
+#'
+#' @import UpSetR
 #' @export
 #'
 #' @examples
@@ -45,46 +47,51 @@ melody.get.summary <- function(rel.abd,
                                prev.filter = 0,
                                ref = NULL,
                                cov.type = c("diag", "ridge"),
-                               keep.raw.data = FALSE,
                                verbose = FALSE) {
 
   cov.type <- match.arg(cov.type)
-  ## Check input
+  ## Check input data
+  if(verbose){
+    message("++ Checking input data. ++")
+  }
   if(!all(!is.na(rel.abd))){
-    stop("The relative abundant data cannot include NA.\n")
+    stop("Detect NA in relative abundant counts.\n")
   }
   if(min(rel.abd) < 0){
-    stop("The relative abundant data cannot be negative.\n")
+    stop("Detect negative value in relative abundant counts.\n")
   }
   if(length(study) != 1){
-    stop("study variable is not a character.\n")
+    stop("Detect more than one elements in study variable.\n")
   }
   if(!(study %in% colnames(sample.data))){
-    stop("study variable doesn't match any variables in sample.data. Please check your sample.data.\n")
+    stop("study variable doesn't match any variables in sample.data.\n")
   }
   if(length(disease) != 1){
-    stop("disease variable is not a character.\n")
+    stop("Detect more than one elemnets in disease variable.\n")
   }
   if(!(disease %in% colnames(sample.data))){
-    stop("disease variable doesn't match any variables in sample.data. Please check your sample.data.\n")
+    stop("disease variable doesn't match any variables in sample.data.\n")
+  }
+  if(length(sample.id) != 1){
+    stop("Detect more than one elemnets in sample.id variable.\n")
   }
   if(!(sample.id %in% colnames(sample.data))){
-    stop("sample.id doesn't match any variables in sample.data. Please check your sample.data.\n")
+    stop("sample.id doesn't match any variables in sample.data.\n")
   }
   if(!is.null(cluster)){
     if(length(cluster) != 1){
-      stop("cluster variable is not a character.\n")
+      stop("Detect more than one elemnets in cluster variable.\n")
     }
     if(!(cluster %in% colnames(sample.data))){
-      stop("cluster variable doesn't match any variables in sample.data. Please check your sample.data.\n")
+      stop("cluster variable doesn't match any variables in sample.data.\n")
     }
   }
   if(!is.null(covariates)){
     if(!all(covariates %in% colnames(sample.data))){
-      stop("covariates don't match variables in sample.data. Please check your sample.data.\n")
+      stop("covariates don't match variables in sample.data.\n")
     }
   }
-  ### Match relative abundant data and sample data
+  ### Match samples in relative abundant counts and sample data
   study.names <- as.character(unique(sample.data[[study]]))
   IDs <- sample.data[[sample.id]]
   L <- length(study.names)
@@ -95,13 +102,14 @@ melody.get.summary <- function(rel.abd,
   for(l in 1:L){
     sampleID <- IDs[study.names[l] == sample.data[[study]]]
     if(!all(sampleID %in% colnames(rel.abd))){
-      stop(paste0("Some samples in study ", study.names[l], " don't match the sample in rel.abd. Please check your input data.\n"))
+      stop(paste0("Some samples in study ", study.names[l], " don't match the sample in rel.abd.\n"))
     }
     Y.pool <- t(rel.abd[,sampleID])
     if(length(Y.pool) == 0){
-      stop(paste0("No sample in study ", study.names[l], " are included in rel.abd. Please check your sample ID in rel.abd and sample.data.\n"))
+      warning(paste0("Less than 20 samples in study ", study.names[l], ", the summary statistics is not stable.",
+                     " Remove study ", study.names[l], "\n"))
     }else if(nrow(Y.pool) < 20){
-      warning(paste0("Less than 20 samples in study ", study.names[l], ", the summary statistics for this study may not stable.",
+      warning(paste0("Less than 20 samples in study ", study.names[l], ", the summary statistics is not stable.",
                      " Remove study ", study.names[l], "\n"))
     }else{
       study.id <- c(study.id, study.names[l])
@@ -134,30 +142,7 @@ melody.get.summary <- function(rel.abd,
       k <- k + 1
     }
   }
-  ### test the taxa number in all studies
-  L <- length(dat)
-  dat.dim <- NULL
-  for(l in 1:L){
-    dat.dim <- c(dat.dim, ncol(dat[[l]]$Y))
-  }
-  if(length(unique(dat.dim)) == 1){
-    K <- unique(dat.dim)
-    if(K <= 2){
-      stop("Less than 3 taxa in the data.\n")
-    }
-  }else{
-    stop("The taxa number are not same in all studies.\n")
-  }
-
-  ### taxon name should be same in each study
-  if(L != 1){
-    for(l in 1:(L-1)){
-      if(!all(colnames(dat[[l]]$Y) == colnames(dat[[l+1]]$Y))){
-        stop("The taxa name don't match in all studies, please cheack the taxa name in your data.\n")
-      }
-    }
-  }
-  ### remove low sequence depth
+  ### Filter the samples using depth.filter
   for(l in 1:L){
     depth.kp <- rowSums(dat[[l]]$Y) > depth.filter
     if(is.null(covariates)){
@@ -168,8 +153,9 @@ melody.get.summary <- function(rel.abd,
     dat[[l]]$Y <- dat[[l]]$Y[depth.kp,]
   }
 
-  ### Create melody object
+  ### Create Melody object
   summary.stat.study <- Melody$new(dat = dat)
+  summary.stat.study$dat.inf$study.names <- study.id
 
   ### Generate summary statistics
   summary.stat.study <- reg.fit.wald(Melody = summary.stat.study,
@@ -178,16 +164,53 @@ melody.get.summary <- function(rel.abd,
                                      ref = ref,
                                      verbose = verbose)
 
-  ### Covariate matrix ridge regularization
+  ### Ridge regularization on covariate matrix
   summary.stat.study <- Get_summary_wald(Melody = summary.stat.study,
                                          cov.type = cov.type,
                                          verbose = verbose)
 
-  ### Check whether to keep input data
-  if(!keep.raw.data){
-    summary.stat.study$dat <- NULL
-    summary.stat.study$reg.fit <- NULL
+  ### Remove raw data
+  summary.stat.study$dat <- NULL
+  summary.stat.study$reg.fit <- NULL
+
+  if(verbose){
+    ### Generate Upset plot
+    taxa.mat <- matrix(FALSE,
+                       nrow = summary.stat.study$dat.inf$L,
+                       ncol = summary.stat.study$dat.inf$K)
+    colnames(taxa.mat) <- summary.stat.study$dat.inf$taxa.names
+    rownames(taxa.mat) <- summary.stat.study$dat.inf$study.names
+    for(l in 1:length(summary.stat.study$taxa.set)){
+      taxa.mat[l,names(summary.stat.study$taxa.set[[l]])] <- summary.stat.study$taxa.set[[l]]
+      taxa.mat[l,summary.stat.study$dat.inf$ref[l]] <- TRUE
+    }
+
+    input <- list()
+    taxa.names <- summary.stat.study$dat.inf$taxa.names
+    for(l in 1:ncol(taxa.mat)){
+      if(!paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&") %in% names(input)){
+        input[[paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&")]] <- 1
+      }else{
+        input[[paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&")]] <- input[[paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&")]] + 1
+      }
+    }
+
+    # Plotting
+    print(upset(fromExpression(input),
+                keep.order=T,
+                sets = summary.stat.study$dat.inf$study.names,
+                nintersects = 40,
+                nsets = length(input),
+                order.by = "freq",
+                decreasing = T,
+                mb.ratio = c(0.6, 0.4),
+                number.angles = 0,
+                text.scale = 1.1,
+                point.size = 2.8,
+                line.size = 1,
+                set_size.scale_max = max(rowSums(taxa.mat)) * 1.2,
+                set_size.show = TRUE
+    ))
   }
-  summary.stat.study$dat.inf$study.names <- study.id
   return(summary.stat.study)
 }

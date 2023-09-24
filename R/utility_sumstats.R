@@ -1,5 +1,5 @@
-## Utility file for generating summary statistics
-
+######## Utility file for generating summary statistics ########
+## this function sumarizes the summary statistics
 Get_summary_wald = function(Melody,
                             G = 5,
                             shrehold = 1e-2,
@@ -19,9 +19,9 @@ Get_summary_wald = function(Melody,
     ref <- Melody$reg.fit[[l]]$ref
     summary.stats <- get_ridge_sumstat_wald(data.beta = data.beta, summarys = tmp,
                                             G = G, shrehold = shrehold, cov.type = cov.type, verbose = verbose)
-    if(verbose){
-      cat("Get summary statistics for study ", as.character(l), "\n")
-    }
+    # if(verbose){
+    #   message("++ Summarizing summary statistics for study ", as.character(l), ". ++")
+    # }
     tmp.l.taxa.name <- names(taxa.set[[l]])[taxa.set[[l]]]
     names(summary.stats$est) <- tmp.l.taxa.name
     rownames(summary.stats$cov) <- tmp.l.taxa.name
@@ -42,7 +42,7 @@ Get_summary_wald = function(Melody,
   return(Melody)
 }
 
-## Utility file for generating summary statistics
+## this function generates models
 reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, verbose = FALSE){
 
   dat <- Melody$dat
@@ -50,9 +50,9 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, verbos
   K <- Melody$dat.inf$K
   study.names <- Melody$dat.inf$study.names
   # waring part:
-  if(verbose){
-    cat("Picking reference features for each study ...\n")
-  }
+  # if(verbose){
+  #   message("++ Picking reference features for each study. ++")
+  # }
   ### check maximum C.V. 1.5 output warning if too large
   if(is.null(ref)){
     maximum.CV <- NULL
@@ -72,7 +72,6 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, verbos
     if(length(ref) == 1){
       if(ref %in% Melody$dat.inf$taxa.names){
         ref <- rep(ref, L)
-        warning("Given one reference id, it will be used as the reference for all studies. \n ")
       }else{
         stop(paste0(as.character(ref)," isn't in the data.\n") )
       }
@@ -95,13 +94,9 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, verbos
     data.relative[[l]] <- list(Y = dat[[l]]$Y[,idx], X = dat[[l]]$X)
   }
 
-  ### check filter.threshold and warning when too small
-  if(filter.threshold < 5){
-    warning("The taxa filter may be too small and summary statistics may be inaccurate.\n")
-  }
-  ### Run summary statistics for Melody
+  ### Generate summary statistics
   if(verbose){
-    cat('Getting summary stats ...\n')
+    message('++ Generating summary statistics. ++')
   }
 
   taxa.set <- list()
@@ -123,18 +118,17 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, verbos
       tax.rm <- colnames(Y.sub)[row_id]
       tax.kp <- colnames(Y.sub)[col_id]
       taxa.set.tmp[tax.rm] <- FALSE
-      warning("Some features have high correlation in study ", study.names[l], ", we keep features:\n",
-              tax.kp, "and remove features:\n",
-              tax.rm, "\n")
+      warning("Some features have high correlation in study ", study.names[l], ", Rmove features:\n",
+              paste0("    ",tax.rm,"\n"))
+
     }
     Y.sub <- Y.sub[,c(taxa.set.tmp,TRUE)]
     taxa.set[[l]] <- taxa.set.tmp
-    ############################################
     data.beta <- list(Y = Y.sub, X = X.sub, SUB.id = SUB.id[[l]])
+    # if(verbose){
+    #   message(paste0("++ Fitting model for study ",  study.names[l], ". ++"))
+    # }
     tmp <- GetGlm.wald(data.beta = data.beta, X.idx = ncol(X.sub))
-    if(verbose){
-      cat("multinimial fit for study ",  study.names[l], "\n")
-    }
     reg.fit[[l]] <- list(tmp = tmp, data.beta = data.beta, taxa.set = taxa.set[[l]], ref = ref[l], idx.rev = idx.rev)
   }
   Melody$dat.inf$ref <- ref
@@ -142,10 +136,7 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, verbos
   return(Melody)
 }
 
-## Modified on 09/25/2022
-# Binomial model:
-# this function output the regression coefficient estimate and covariance estimate of the coefficient
-# estimate from the multinomial logistic regression
+## this function output the regression coefficient estimate and covariance estimate of the coefficient.
 GetGlm.wald <- function(data.beta, X.idx){
 
   n = nrow(data.beta$Y)
@@ -154,33 +145,22 @@ GetGlm.wald <- function(data.beta, X.idx){
 
   n.beta = (K-1)*d
   par.interest.index.beta = kronecker(1,((0:(K-2))*d)) + X.idx
-
   est.single = NULL
   for(k in 1:(K-1)){
     tmp = cbind(data.beta$Y[,K], data.beta$Y[,k])
-
     N = rowSums(tmp)
     idx.subj = which(N>0)
-    # input.data.tmp = data.frame(X = data.beta$X[idx.subj,-1], Y = tmp[idx.subj,2], N = N[idx.subj])
-    # glm.out.tmp = glm.try(input.data.tmp)
-    #
-    # if(sum(is.na(glm.out.tmp))==0){
-    #   est.single = c(est.single,  coef(glm.out.tmp) )
-    # }else{
     input.data.tmp = list(Y=tmp[idx.subj,], X = data.beta$X[idx.subj,-1])
     multinom.out.tmp = brglm2::brmultinom(Y ~ X , input.data.tmp, type = "AS_mean")
-    #multinom.out.tmp = nnet::multinom(Y ~ X, input.data.tmp, maxit=1000, abstol = 1.0e-10,
-    #                              reltol = 1.0e-15, Hess = TRUE, trace=FALSE, MaxNWts = 5000)
     est.single = c(est.single,  multinom.out.tmp$coefficients[-c(1:(length(multinom.out.tmp$coefficients) - d))] )
-    #est.single = c(est.single,  coef(multinom.out.tmp) )
-    # }
+
   }
   est.single <- matrix(est.single, nrow = d)
   summary = list(est=est.single, n=n)
   return(summary)
 }
 
-# this find output the sandwich covariance
+## this function output the sandwich covariate matrix.
 get_cov_sand_wald <- function(summary.stat, data.beta, K){
 
   n <- summary.stat$n
@@ -238,7 +218,7 @@ get_cov_sand_wald <- function(summary.stat, data.beta, K){
 
 }
 
-### normal likelihood
+### utility function for ridge regularization
 para_NLoPR_wald <- function(R_lst ,sample.id, G){
   para.lst <- list()
   for(g in 1:G){
@@ -264,6 +244,7 @@ para_NLoPR_wald <- function(R_lst ,sample.id, G){
   return(para.lst)
 }
 
+### utility function for ridge regularization
 get_NLoPR_wald <- function(R_lst ,sample.id, lambda, G, para.lst){
   Q <- 0
   for(g in 1:G){
@@ -283,7 +264,7 @@ get_NLoPR_wald <- function(R_lst ,sample.id, lambda, G, para.lst){
   }
 }
 
-### Calculate pearson for lambda
+### utility function for ridge regularization
 Calc.pearson.wald <- function(loop_mat, R_lst ,sample.id, lambda, G, shrehold = 1e-2){
   loop.end <- TRUE
   para.NLoPR <- para_NLoPR_wald(R_lst ,sample.id, G)
@@ -329,10 +310,10 @@ Calc.pearson.wald <- function(loop_mat, R_lst ,sample.id, lambda, G, shrehold = 
       }
     }
   }
-
   return(loop_mat)
 }
 
+### utility function for generating summary statistics
 get_ridge_sumstat_wald <- function(data.beta, summarys, G, shrehold, cov.type = "ridge", verbose = FALSE){
 
   Y.sub <- data.beta$Y
@@ -342,14 +323,13 @@ get_ridge_sumstat_wald <- function(data.beta, summarys, G, shrehold, cov.type = 
   SUBid <- as.character(data.beta$SUB.id)
   uniq.SUBid <- unique(SUBid)
   nn <- length(uniq.SUBid)
-  ###### Get R lists ######
   R_lst <- get_cov_sand_wald(summary.stat = summarys,data.beta = data.beta, K = K)
   set.seed(2022)
   sample.id <- split(sample(nn), (1:nn)%%G)
   summary <- list()
   summary$est <- c(R_lst$est[,X.name[length(X.name)]])
   summary$est <- as.vector(summary$est)
-  ##### Get lambda by loop #####
+  ### search best lambda
   if(cov.type == "ridge"){
     loop_mat <- matrix(0, 3, 3)
     rownames(loop_mat) <- c("lambda", "Pearson.R","signal")
@@ -370,7 +350,6 @@ get_ridge_sumstat_wald <- function(data.beta, summarys, G, shrehold, cov.type = 
     sand  <- sand + (R_lst$cov_R %*% R_lst$s.i.lst[ii,]) %*% t(R_lst$cov_R %*% R_lst$s.i.lst[ii,])
   }
   Sigma <- sand/nn
-
   Sigma_d <- diag(sqrt(diag(Sigma)))
   R <- Sigma / (sqrt(diag(Sigma)) %*% t(sqrt(diag(Sigma))))
   R_lambda <- lambda * R + (1-lambda) * diag(nrow(R))
@@ -391,98 +370,3 @@ get_ridge_sumstat_wald <- function(data.beta, summarys, G, shrehold, cov.type = 
   summary$B <- R_lst$B
   return(summary)
 }
-
-## functions below are used for utility for MetaMic
-# version 3: update on 06/16/2020
-
-# # beta.m is a (m-1)*p beta matrix
-# .fun.neg.score.beta <- function(beta.m, data){
-#
-#   Y = data$Y; X = data$X;
-#
-#   n = nrow(Y)
-#   m = ncol(Y)
-#   p = ncol(X)
-#
-#   n.beta = (m - 1)*p
-#
-#   if(nrow(beta.m)!=(m-1) | ncol(beta.m)!=p ){
-#
-#     warning("Dim of beta does not match the dim of data")
-#
-#   }else{
-#
-#     Score.beta = rep(0, n.beta)
-#     nY = rowSums(Y)
-#
-#     for(i in 1:n){
-#
-#       E.i = c(exp(beta.m %*% X[i,]), 1)
-#       sum.E.i = sum(E.i)
-#       P.i = E.i/sum.E.i
-#       Score.beta = Score.beta + kronecker( matrix(Y[i,-m] - nY[i]*P.i[-m], ncol=1), matrix(X[i,], ncol=1))
-#
-#     }
-#
-#     return (-Score.beta)
-#   }
-#
-#
-#
-# }
-#
-# .fun.score.i.beta <- function(beta.m, data){
-#
-#   Y = data$Y; X = data$X;
-#
-#   n = nrow(Y)
-#   m = ncol(Y)
-#   p = ncol(X)
-#
-#   n.beta = (m - 1)*p
-#
-#   if(nrow(beta.m)!=(m-1) | ncol(beta.m)!=p ){
-#
-#     warning("Dim of beta does not match the dim of data")
-#
-#   }else{
-#
-#     Score.beta.i = matrix(0, n, n.beta)
-#     nY = rowSums(Y)
-#
-#     for(i in 1:n){
-#
-#       E.i = c(exp(beta.m %*% X[i,]), 1)
-#       sum.E.i = sum(E.i)
-#       P.i = E.i/sum.E.i
-#
-#       # add 03/28/2016
-#       #       if(sum.E.i==0){
-#       #         P.i = rep(0,m)
-#       #       }
-#
-#       Score.beta.i[i,] =  kronecker( matrix(Y[i,-m] - nY[i]*P.i[-m], ncol=1), matrix(X[i,], ncol=1) )
-#
-#     }
-#
-#     return (Score.beta.i)
-#   }
-#
-# }
-#
-# glm.try <- function(input.data.tmp){
-#   tryCatch(
-#     { glm.out.tmp =  glm(Y/N ~ X, data = input.data.tmp, family = "binomial", weights = N, method = "brglmFit")
-#     return(glm.out.tmp)
-#     },
-#     warning=function(warning_message){
-#       #message(warning_message)
-#       return(NA)
-#     },
-#     error = function(error_message){
-#       #message(error_message)
-#       return(NA)
-#     }
-#
-#   )
-# }
