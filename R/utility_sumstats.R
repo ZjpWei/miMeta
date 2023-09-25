@@ -1,5 +1,5 @@
 ######## Utility file for generating summary statistics ########
-## this function sumarizes the summary statistics
+## this function summarizes the summary statistics
 Get_summary_wald = function(Melody,
                             G = 5,
                             shrehold = 1e-2,
@@ -136,7 +136,7 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, verbos
   return(Melody)
 }
 
-## this function output the regression coefficient estimate and covariance estimate of the coefficient.
+## this function generates the regression coefficient estimates and covariance estimates.
 GetGlm.wald <- function(data.beta, X.idx){
 
   n = nrow(data.beta$Y)
@@ -160,7 +160,7 @@ GetGlm.wald <- function(data.beta, X.idx){
   return(summary)
 }
 
-## this function output the sandwich covariate matrix.
+## this function generates the sandwich covariate matrix.
 get_cov_sand_wald <- function(summary.stat, data.beta, K){
 
   n <- summary.stat$n

@@ -30,8 +30,8 @@ editor_options:
 Download package from github.
 
 ```{r getPackage, echo=TRUE}
-library(devtools)
-install_github("ZjpWei/miMeta")
+# library(devtools)
+# install_github("ZjpWei/miMeta")
 ```
 
 Load the package. 

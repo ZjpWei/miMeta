@@ -8,5 +8,5 @@
 #'
 #' @references Wirbel, Jakob et al. Nat Med. 2019 Apr;25(4):679-689.
 #'
-#' @source <https://pubmed.ncbi.nlm.nih.gov/30936547/>
+#' @source <https://github.com/zellerlab/crc_meta>
 "CRC_abd"
