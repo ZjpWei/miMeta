@@ -1,5 +1,11 @@
 # miMeta
-R pcakage
+
+author: 
+- name: "Zhoujingpeng Wei"
+  affiliation: 
+  - Department of Biostatistics and Medical Informatics, University of Wisconsin-Madison
+  email: zwei74@wisc.edu
+package: miMeta
 
 ## Introduction
 
