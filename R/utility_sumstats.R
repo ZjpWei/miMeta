@@ -1,3 +1,5 @@
+#' @import parallel
+#' @import foreach
 #' @import doParallel
 
 
@@ -15,7 +17,7 @@ Get_summary_wald = function(Melody,
   K <- Melody$dat.inf$K
 
   ### setup parallel jobs
-  cores=detectCores()
+  cores <- detectCores()
   cl <- makeCluster(cores[1]-1)
   registerDoParallel(cl)
   # taxa.set <- list()
@@ -128,7 +130,7 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, verbos
   # for(l in 1:L){
 
   ### Setup parallel jobs
-  cores=detectCores()
+  cores <- detectCores()
   cl <- makeCluster(cores[1]-1)  # not to overload your computer
   registerDoParallel(cl)
 

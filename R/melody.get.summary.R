@@ -16,6 +16,7 @@
 #' \code{\link{melody.merge.summary}}
 #'
 #' @import UpSetR
+#' @import doParallel
 #' @export
 #'
 #' @examples
