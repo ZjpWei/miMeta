@@ -17,8 +17,11 @@ Get_summary_wald = function(Melody,
     tmp <- Melody$reg.fit[[l]]$tmp
     taxa.set[[l]] <- Melody$reg.fit[[l]]$taxa.set
     ref <- Melody$reg.fit[[l]]$ref
-    summary.stats <- get_ridge_sumstat_wald(data.beta = data.beta, summarys = tmp,
-                                            G = G, shrehold = shrehold, cov.type = cov.type, verbose = verbose)
+    summary.stats <- get_ridge_sumstat_wald(data.beta = data.beta,
+                                            summarys = tmp,
+                                            G = G, shrehold = shrehold,
+                                            cov.type = cov.type,
+                                            verbose = verbose)
     # if(verbose){
     #   message("++ Summarizing summary statistics for study ", as.character(l), ". ++")
     # }
@@ -153,7 +156,6 @@ GetGlm.wald <- function(data.beta, X.idx){
     input.data.tmp = list(Y=tmp[idx.subj,], X = data.beta$X[idx.subj,-1])
     multinom.out.tmp = brglm2::brmultinom(Y ~ X , input.data.tmp, type = "AS_mean")
     est.single = c(est.single,  multinom.out.tmp$coefficients[-c(1:(length(multinom.out.tmp$coefficients) - d))] )
-
   }
   est.single <- matrix(est.single, nrow = d)
   summary = list(est=est.single, n=n)

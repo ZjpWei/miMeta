@@ -8,7 +8,7 @@
 An object of class \code{matrix} (inherits from \code{array}) with 267 rows and 572 columns.
 }
 \source{
-<https://pubmed.ncbi.nlm.nih.gov/30936547/>
+<https://github.com/zellerlab/crc_meta>
 }
 \usage{
 data(CRC_abd, meta)

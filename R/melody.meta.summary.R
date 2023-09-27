@@ -12,6 +12,9 @@
 #' \code{\link{melody.get.summary}},
 #' \code{\link{melody.merge.summary}}
 #'
+#' @import dplyr
+#' @import ggplot2
+#'
 #' @export
 #'
 #' @examples
@@ -155,6 +158,7 @@ melody.meta.summary <- function(Melody,
       ic <- min.result$GIC.result - dev
       names(dev) <- as.character(sum(min.result$mu.fit))
       names(ic) <- names(dev)
+      names(delta) <- paste0("<",Melody$dat.inf$study.names,">_<" ,Melody$dat.inf$ref,">")
       results.all <- list(coef = coef,
                           delta = delta,
                           dev = dev,
@@ -174,6 +178,7 @@ melody.meta.summary <- function(Melody,
       ic <- GIC.tau - dev
       names(dev) <- as.character(support.sizes)
       names(ic) <- names(dev)
+      rownames(delta) <- paste0("<",Melody$dat.inf$study.names,">_<" ,Melody$dat.inf$ref,">")
       results.all <- list(coef = coef,
                           delta = delta,
                           dev = dev,
@@ -302,6 +307,7 @@ melody.meta.summary <- function(Melody,
     if(ouput.best.one){
       coef <- min.result$mu.fit
       delta <- min.result$ref_est
+      names(delta) <- paste0("<",Melody$dat.inf$study.names,">_<" ,Melody$dat.inf$ref,">")
       dev <- min.result$q_loss
       ic <- min.result$GIC.result - dev
       names(dev) <- as.character(sum(min.result$mu.fit))
@@ -323,7 +329,7 @@ melody.meta.summary <- function(Melody,
         dev <- c(dev, tune.set[[l]]$q_loss)
       }
       ic <- GIC.tau - dev
-      row(delta) <- paste0("<",Melody$dat.inf$study.names,">_<" ,Melody$dat.inf$ref,">")
+      rownames(delta) <- paste0("<",Melody$dat.inf$study.names,">_<" ,Melody$dat.inf$ref,">")
       names(dev) <- as.character(g.sequence)
       names(ic) <- names(dev)
       results.all <- list(coef = coef,
@@ -334,5 +340,41 @@ melody.meta.summary <- function(Melody,
                           tune.type = tune.type)
     }
   }
+  if(verbose){
+    if(ouput.best.one){
+      taxa_tab <- data.frame(taxa = names(which(results.all$coef!=0)),
+                             coef = as.numeric(results.all$coef[results.all$coef!=0]))
+    }else{
+      min.id <- which.min(results.all$dev + results.all$ic)
+      taxa_tab <- data.frame(taxa = names(which(results.all$coef[,min.id]!=0)),
+                             coef = as.numeric(results.all$coef[results.all$coef[,min.id]!=0]))
+    }
+
+    ggp1 <- taxa_tab %>% arrange(coef) %>%
+      mutate(taxa = factor(taxa, levels = taxa)) %>%
+      ggplot() + geom_point(aes(x= factor(taxa), y= coef)) +
+      theme_classic() + coord_flip() + ylab("coef") +
+      theme(panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.text.y = element_text(size = 8),
+            axis.text.x = element_text(size = 10),
+            axis.title.y = element_blank(),
+            axis.title.x = element_text(size = 10),
+            panel.border = element_rect(colour = "black", fill=NA),
+            legend.position = "right") +
+      scale_x_discrete(position='bottom') +
+      scale_fill_manual(values=c('lightgrey', 'darkgrey'), guide="none") +
+      geom_hline(aes(yintercept = 0),colour="#990000", linetype="dashed")
+
+    # plotting
+
+    ggsave(filename = paste0(getwd(), "/miMeta.pdf"),
+           plot = ggp1,
+           width = 8,
+           height = 0.2 * nrow(taxa_tab))
+
+  }
+
   return(results.all)
 }
