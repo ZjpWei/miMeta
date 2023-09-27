@@ -15,7 +15,8 @@ Imports:
   R6,
   UpSetR,
   dplyr,
-  ggplot2
+  ggplot2,
+  doParallel
 RoxygenNote: 7.2.3
 Suggests: 
     knitr,

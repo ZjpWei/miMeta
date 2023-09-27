@@ -1,3 +1,6 @@
+#' @import doParallel
+
+
 ######## Utility file for generating summary statistics ########
 ## this function summarizes the summary statistics
 Get_summary_wald = function(Melody,
@@ -10,13 +13,18 @@ Get_summary_wald = function(Melody,
   #######################################
   L <- Melody$dat.inf$L
   K <- Melody$dat.inf$K
-  summary.stat.study = list()
-  taxa.set <- list()
-  for(l in 1:L){
+
+  ### setup parallel jobs
+  cores=detectCores()
+  cl <- makeCluster(cores[1]-1)
+  registerDoParallel(cl)
+  # taxa.set <- list()
+  # for(l in 1:L){
+  summary.stat.study <- foreach(l = 1:L) %dopar% {
     data.beta <- Melody$reg.fit[[l]]$data.beta
     tmp <- Melody$reg.fit[[l]]$tmp
-    taxa.set[[l]] <- Melody$reg.fit[[l]]$taxa.set
     ref <- Melody$reg.fit[[l]]$ref
+    taxa.vec <- Melody$reg.fit[[l]]$taxa.set
     summary.stats <- get_ridge_sumstat_wald(data.beta = data.beta,
                                             summarys = tmp,
                                             G = G, shrehold = shrehold,
@@ -25,7 +33,7 @@ Get_summary_wald = function(Melody,
     # if(verbose){
     #   message("++ Summarizing summary statistics for study ", as.character(l), ". ++")
     # }
-    tmp.l.taxa.name <- names(taxa.set[[l]])[taxa.set[[l]]]
+    tmp.l.taxa.name <- names(taxa.vec)[taxa.vec]
     names(summary.stats$est) <- tmp.l.taxa.name
     rownames(summary.stats$cov) <- tmp.l.taxa.name
     colnames(summary.stats$cov) <- tmp.l.taxa.name
@@ -36,9 +44,23 @@ Get_summary_wald = function(Melody,
                             n = summary.stats$n,
                             sandwich.cov = summary.stats$sandwich,
                             ref = ref,
-                            idx.rev = Melody$reg.fit[[l]]$idx.rev)
-    summary.stat.study[[l]] = summary.stat.swd
+                            idx.rev = Melody$reg.fit[[l]]$idx.rev,
+                            para.id = l)
+    summary.stat.swd
   }
+
+  ### stop cluster
+  stopCluster(cl)
+
+  ### reorder output
+  taxa.set <- list()
+  order.vec <- c()
+  for(l in 1:L){
+    order.vec <- c(order.vec, summary.stat.study[[l]]$para.id)
+    summary.stat.study[[l]]$para.id <- NULL
+    taxa.set[[l]] <- Melody$reg.fit[[l]]$taxa.set
+  }
+  summary.stat.study <- summary.stat.study[order(order.vec)]
 
   Melody$summary.stat.study <- summary.stat.study
   Melody$taxa.set <- taxa.set
@@ -102,9 +124,15 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, verbos
     message('++ Generating summary statistics. ++')
   }
 
-  taxa.set <- list()
-  reg.fit <- list()
-  for(l in 1:L){
+  # reg.fit <- list()
+  # for(l in 1:L){
+
+  ### Setup parallel jobs
+  cores=detectCores()
+  cl <- makeCluster(cores[1]-1)  # not to overload your computer
+  registerDoParallel(cl)
+
+  reg.fit <- foreach(l = 1:L) %dopar% {
     Y.sub <- data.relative[[l]]$Y
     X.sub <- cbind(1, data.relative[[l]]$X)
     colnames(X.sub) <- c("Intercept", paste0("V_", as.character(1:(ncol(X.sub)-1))))
@@ -126,14 +154,28 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, verbos
 
     }
     Y.sub <- Y.sub[,c(taxa.set.tmp,TRUE)]
-    taxa.set[[l]] <- taxa.set.tmp
     data.beta <- list(Y = Y.sub, X = X.sub, SUB.id = SUB.id[[l]])
     # if(verbose){
     #   message(paste0("++ Fitting model for study ",  study.names[l], ". ++"))
     # }
     tmp <- GetGlm.wald(data.beta = data.beta, X.idx = ncol(X.sub))
-    reg.fit[[l]] <- list(tmp = tmp, data.beta = data.beta, taxa.set = taxa.set[[l]], ref = ref[l], idx.rev = idx.rev)
+    reg.fit.one <- list(tmp = tmp, data.beta = data.beta, taxa.set = taxa.set.tmp,
+                        ref = ref[l], idx.rev = idx.rev, para.id = l)
+
+    ### output
+    reg.fit.one
   }
+  ### stop cluster
+  stopCluster(cl)
+
+  ### reorder output
+  order.vec <- c()
+  for(l in 1:L){
+    order.vec <- c(order.vec, reg.fit[[l]]$para.id)
+    reg.fit[[l]]$para.id <- NULL
+  }
+  reg.fit <- reg.fit[order(order.vec)]
+
   Melody$dat.inf$ref <- ref
   Melody$reg.fit <- reg.fit
   return(Melody)
