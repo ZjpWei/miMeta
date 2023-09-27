@@ -4,11 +4,6 @@ Maintainer: Zhoujingpeng Wei
 
 Email: zwei74@wisc.edu
 
-## Introduction
-
-`miMeta` is a R package and it implements the new methods for meta-analysis of microbiome association studies that respect the unique features of microbiome data such as compositionality. It first generate summary statistics (microbiome-disease association coefficient estimates and their variances) for individual studies. And then it combines the summary statistics across studies to select disease-associated microbial signatures based on the average absolute-abundance association coefficients inferred from the summary statistics. In particular, the selection of signature is operated through a best-subset selection.
-
-
 # Introduction
 
 `miMeta` is a R package and it implements the new methods for meta-analysis of microbiome association studies that respect the unique features of microbiome data such as compositionality. It first generate summary statistics (microbiome-disease association coefficient estimates and their variances) for individual studies. And then it combines the summary statistics across studies to select disease-associated microbial signatures based on the average absolute-abundance association coefficients inferred from the summary statistics. In particular, the selection of signature is operated through a best-subset selection.
