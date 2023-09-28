@@ -38,6 +38,8 @@
 #' @param tune.type Type of information criterion for choosing the optimal tunning parameters. Available options are "BIC", "kBIC", and "mBIC".
 #' Default is "HBIC".
 #' @param tol Converge tolerance for detecting the best model. Default is 1e-3.
+#' @param parallel.core The number of cores to be concurrently used for generating summary statistics.
+#' It's an integer between 1 and cl - 1 (cl is the total core number). parallel.core = 1: no parallel. Default is cl - 1.
 #' @param ouput.best.one Whether only output the best model. Default is TRUE.
 #' @param verbose: whether to print verbose information. Default is FALSE. (see details in Value)
 #'
@@ -109,8 +111,9 @@ melody <- function(rel.abd,
                    tune.size.sequence = NULL,
                    tune.size.range = NULL,
                    tune.type = c("HBIC", "BIC", "KBIC", "EBIC"),
-                   ouput.best.one = TRUE,
                    tol = 1e-3,
+                   parallel.core = NULL,
+                   ouput.best.one = TRUE,
                    verbose = FALSE
                    ) {
 
@@ -130,6 +133,7 @@ melody <- function(rel.abd,
                                            prev.filter,
                                            ref,
                                            cov.type,
+                                           parallel.core,
                                            verbose)
 
   ### Meta-analysis

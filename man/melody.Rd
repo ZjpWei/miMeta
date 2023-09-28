@@ -20,8 +20,9 @@ melody(
   tune.size.sequence = NULL,
   tune.size.range = NULL,
   tune.type = c("HBIC", "BIC", "KBIC", "EBIC"),
-  ouput.best.one = TRUE,
   tol = 0.001,
+  parallel.core = NULL,
+  ouput.best.one = TRUE,
   verbose = FALSE
 )
 }
@@ -73,9 +74,12 @@ Default is  1:round(K/2), where K is number of microbial features.}
 \item{tune.type}{Type of information criterion for choosing the optimal tunning parameters. Available options are "BIC", "kBIC", and "mBIC".
 Default is "HBIC".}
 
-\item{ouput.best.one}{Whether only output the best model. Default is TRUE.}
-
 \item{tol}{Converge tolerance for detecting the best model. Default is 1e-3.}
+
+\item{parallel.core}{The number of cores to be concurrently used for generating summary statistics.
+It's an integer between 1 and cl - 1 (cl is the total core number). parallel.core = 1: no parallel. Default is cl - 1.}
+
+\item{ouput.best.one}{Whether only output the best model. Default is TRUE.}
 
 \item{verbose:}{whether to print verbose information. Default is FALSE. (see details in Value)}
 }

@@ -48,6 +48,7 @@ melody.get.summary <- function(rel.abd,
                                prev.filter = 0,
                                ref = NULL,
                                cov.type = c("diag", "ridge"),
+                               parallel.core = NULL,
                                verbose = FALSE) {
 
   cov.type <- match.arg(cov.type)
@@ -163,11 +164,13 @@ melody.get.summary <- function(rel.abd,
                                      SUB.id = SUB.id,
                                      filter.threshold = prev.filter,
                                      ref = ref,
+                                     parallel.core = parallel.core,
                                      verbose = verbose)
 
   ### Ridge regularization on covariate matrix
   summary.stat.study <- Get_summary_wald(Melody = summary.stat.study,
                                          cov.type = cov.type,
+                                         parallel.core = parallel.core,
                                          verbose = verbose)
 
   ### Remove raw data
