@@ -6,7 +6,7 @@ See following items for more details:
 
 * [`miMeta` Manual](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_0.1.0.pdf).
 
-* [`miMeta` Tutorial](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.Rmd).
+* [`miMeta` vignette](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.http).
 
 * Article: Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis.
 
@@ -19,13 +19,35 @@ Department of Biostatistics and Medical Informatics, University of Wisconsin-Mad
 ## Installation
 
 Install package from github.
-
 ```{r}
 devtools::install_github("ZjpWei/miMeta")
 ```
 
 Install package by [source code](https://github.com/ZjpWei/miMeta/blob/main/miMeta_0.1.0.tar.gz)
-
 ```{r}
 install.packages("./miMeta_0.1.0.tar.gz", repos = NULL, type = "source")
 ```
+
+## Quick start guide
+
+The following are minimal examples on functionalities of `miMeta`. For more detailes, please refer to its [vignette](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.http).
+
+* Load package and data
+```{r}
+library("miMeta")
+
+data("CRC_abd", "meta", package = "miMeta")
+```
+
+* Perform meta-analysis
+```{r}
+meta.result <- melody(rel.abd = CRC_abd,
+                      sample.data = meta,
+                      sample.id = "Sample_ID",
+                      study = "Study",
+                      disease = "Group")
+```
+
+## Issues tracker
+
+Please use the [issues tracker](https://github.com/ZjpWei/miMeta/issues) to report any bugs or give any suggestions.
