@@ -30,7 +30,7 @@ install.packages("./miMeta_0.1.0.tar.gz", repos = NULL, type = "source")
 
 ## Quick start guide
 
-The following are minimal examples on functionalities of `miMeta`. For more detailes, please refer to its [vignette](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.http).
+The following are minimal examples on functionalities of `miMeta`. For more detailes, please refer to its [vignette](http://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
 
 * Load package and data
 ```{r}
