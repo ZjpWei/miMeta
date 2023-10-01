@@ -6,7 +6,7 @@ See following items for more details:
 
 * [`miMeta` Manual](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_0.1.0.pdf).
 
-* [`miMeta` vignette](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
+* [`miMeta` vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
 
 * Article: Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis.
 
@@ -30,7 +30,7 @@ install.packages("./miMeta_0.1.0.tar.gz", repos = NULL, type = "source")
 
 ## Quick start guide
 
-The following are minimal examples on functionalities of `miMeta`. For more detailes, please refer to its [vignette](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
+The following are minimal examples on functionalities of `miMeta`. For more detailes, please refer to its [vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
 
 * Load package and data
 ```{r}
