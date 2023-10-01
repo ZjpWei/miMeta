@@ -4,14 +4,25 @@
 
 See following items for more details:
 
-* Manual.
+* [`miMeta` Manual](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_0.1.0.pdf).
 
-* Tutorial
+* [`miMeta` Tutorial](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.Rmd).
 
-* The article: Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis. Submitted.
+* Article: Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis.
 
 ## Author
 
 Zhoujingpeng Wei @[Tang](https://tangzheng1.github.io/tanglab/)
 
+Department of Biostatistics and Medical Informatics, University of Wisconsin-Madison
+
+## Installation
+
+Install package from github.
+
+```{r getPackage, echo=TRUE}
+devtools::install_github("ZjpWei/miMeta")
+```
+
+Install package by [source code](https://github.com/ZjpWei/miMeta/miMeta_0.1.0.tgz).
 
