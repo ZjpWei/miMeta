@@ -1,14 +1,15 @@
-# miMeta
+## miMeta
 
-Maintainer: Zhoujingpeng Wei
+`miMeta` is a R package and it implements the new methods for meta-analysis of microbiome association studies that respect the unique features of microbiome data such as compositionality.
 
-Email: zwei74@wisc.edu
+See following items for more details:
 
-# Introduction
+* Sample identity: "Sample_ID"
 
-`miMeta` is a R package and it implements the new methods for meta-analysis of microbiome association studies that respect the unique features of microbiome data such as compositionality. It first generate summary statistics (microbiome-disease association coefficient estimates and their variances) for individual studies. And then it combines the summary statistics across studies to select disease-associated microbial signatures based on the average absolute-abundance association coefficients inferred from the summary statistics. In particular, the selection of signature is operated through a best-subset selection.
+* Study name: "Study"
 
-# Installation
+* Disease status: "Group"
+
 
 Download package from github.
 
@@ -32,11 +33,7 @@ There are two approaches miMeta can run meta-analysis. Approach #1: If the indiv
 
 Here we use the datasets from the five metagenomics studies of colorectal cancer (CRC) [2] to demonstrate the use of each function. The "CRC_abd" is a feature-by-sample matrix of species-level relative abundance counts from the five studies. For the easy of demonstration, we include 267 species under order *Clostridiales*.  The "meta" is a data frame including the sample-level variables from the five studies. In particular, the following variables are in the meta data:
 
-* Sample identity: "Sample_ID"
 
-* Study name: "Study"
-
-* Disease status: "Group"
 
 ```{r echo=TRUE}
 data("CRC_abd", "meta", package = "miMeta")
