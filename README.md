@@ -20,9 +20,12 @@ Department of Biostatistics and Medical Informatics, University of Wisconsin-Mad
 
 Install package from github.
 
-```{r getPackage, echo=TRUE}
+```{r}
 devtools::install_github("ZjpWei/miMeta")
 ```
 
 Install package by [source code](https://github.com/ZjpWei/miMeta/blob/main/miMeta_0.1.0.tar.gz)
 
+```{r}
+install.packages("./miMeta_0.1.0.tar.gz", repos = NULL, type = "source")
+```
