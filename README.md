@@ -24,5 +24,5 @@ Install package from github.
 devtools::install_github("ZjpWei/miMeta")
 ```
 
-Install package by [source code](https://github.com/ZjpWei/miMeta/miMeta_0.1.0.tgz).
+Install package by [source code](https://github.com/ZjpWei/miMeta/blob/main/miMeta_0.1.0.tar.gz)
 
