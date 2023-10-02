@@ -1,13 +1,13 @@
 ## ----getPackage, echo=TRUE----------------------------------------------------
-# if (!requireNamespace("BiocManager", quietly = TRUE))
-#     install.packages("BiocManager")
-# BiocManager::install("miMeta")
+if(!require("miMeta", quietly = TRUE)){
+  devtools::install_github("ZjpWei/miMeta")
+}
 
 ## ----load, echo=TRUE----------------------------------------------------------
-library(miMeta)
-library(tidyverse)
-library(DT)
-library(ggplot2)
+library("miMeta")
+library("DT")
+library("ggplot2")
+library("tidyverse")
 
 ## ----echo=TRUE----------------------------------------------------------------
 data("CRC_abd", "meta", package = "miMeta")

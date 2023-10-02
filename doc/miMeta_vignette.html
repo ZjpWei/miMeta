@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2023-09-24" />
+<meta name="date" content="2023-10-01" />
 
 <title>miMeta Tutorial</title>
 
@@ -1917,7 +1917,7 @@ function toggle_visibility(id1) {
 <p class="author-name">Zhoujingpeng Wei<span class="affil-mark">1*</span></p>
 <p class="author-affiliation"><span class="affil-mark">1</span>Department of Biostatistics and Medical Informatics, University of Wisconsin-Madison</p>
 <p class="author-email"><span class="affil-mark">*</span><a href="mailto:zwei74@wisc.edu">zwei74@wisc.edu</a></p>
-<h4 class="date">2023-09-24</h4>
+<h4 class="date">2023-10-01</h4>
 <h4 class="package">Package</h4>
 <p>miMeta 0.1.0</p>
 
@@ -1930,29 +1930,31 @@ function toggle_visibility(id1) {
 </div>
 <div id="installation" class="section level1" number="2">
 <h1><span class="header-section-number">2</span> Installation</h1>
-<p>Download package from github.</p>
-<pre class="r"><code># if (!requireNamespace(&quot;BiocManager&quot;, quietly = TRUE))
-#     install.packages(&quot;BiocManager&quot;)
-# BiocManager::install(&quot;miMeta&quot;)</code></pre>
-<p>Load the package.</p>
-<pre class="r"><code>library(miMeta)
-library(tidyverse)</code></pre>
+<p>Install package from github.</p>
+<pre class="r"><code>if(!require(&quot;miMeta&quot;, quietly = TRUE)){
+  devtools::install_github(&quot;ZjpWei/miMeta&quot;)
+}</code></pre>
+<p>Load the packages.</p>
+<pre class="r"><code>library(&quot;miMeta&quot;)
+library(&quot;DT&quot;)
+library(&quot;ggplot2&quot;)
+library(&quot;tidyverse&quot;)</code></pre>
 <pre><code>## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-## ✔ dplyr     1.1.2     ✔ readr     2.1.4
+## ✔ dplyr     1.1.3     ✔ readr     2.1.4
 ## ✔ forcats   1.0.0     ✔ stringr   1.5.0
-## ✔ ggplot2   3.4.2     ✔ tibble    3.2.1
-## ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
-## ✔ purrr     1.0.1     
+## ✔ lubridate 1.9.2     ✔ tibble    3.2.1
+## ✔ purrr     1.0.1     ✔ tidyr     1.3.0
 ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
 ## ✖ dplyr::filter() masks stats::filter()
 ## ✖ dplyr::lag()    masks stats::lag()
 ## ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
-<pre class="r"><code>library(DT)
-library(ggplot2)</code></pre>
 </div>
 <div id="meta-analysis-given-all-samples-of-all-participating-studies" class="section level1" number="3">
 <h1><span class="header-section-number">3</span> Meta-analysis given all samples of all participating studies</h1>
-<p>There are two approaches miMeta can run meta-analysis. Approach #1: If the individual-level sample data across all participating studies are available, the function melody can take these data as input, generate summary statistics for each study internally, and combine the summary statistics to select microbial signatures. Approach #2: If individual-level samples of each study are not in a central place and/or come in sequentially, summary statistics can be generated for each study separately using the function melody.get.summary. Then, the summary statistics of all participating studies can be combined using the function melody.merge.summary, and finally, meta-analyzed using the function melody.meta.summary. We demonstrate Approach #1 in this session and Approach #2 in the next session.</p>
+<p>There are two approaches miMeta can run meta-analysis.</p>
+<p>Approach #1: If the individual-level sample data across all participating studies are available, the function melody can take these data as input, generate summary statistics for each study internally, and combine the summary statistics to select microbial signatures.</p>
+<p>Approach #2: If individual-level samples of each study are not in a central place and/or come in sequentially, summary statistics can be generated for each study separately using the function melody.get.summary. Then, the summary statistics of all participating studies can be combined using the function melody.merge.summary, and finally, meta-analyzed using the function melody.meta.summary.</p>
+<p>We demonstrate Approach #1 in this session and Approach #2 in the next session.</p>
 <p>Here we use the datasets from the five metagenomics studies of colorectal cancer (CRC) [2] to demonstrate the use of each function. The “CRC_abd” is a feature-by-sample matrix of species-level relative abundance counts from the five studies. For the easy of demonstration, we include 267 species under order <em>Clostridiales</em>. The “meta” is a data frame including the sample-level variables from the five studies. In particular, the following variables are in the meta data:</p>
 <ul>
 <li><p>Sample identity: “Sample_ID”</p></li>
@@ -1968,10 +1970,10 @@ table(meta[,c(&quot;Study&quot;, &quot;Group&quot;)])</code></pre>
 ##   DE-CRC  60  60
 ##   FR-CRC  52  61
 ##   US-CRC  51  52</code></pre>
-<p>By default, melody only output the information about the best model selected. If users want to see the information about all models of different sizes on the search path, set output.best.one=FALSE. See help(melody) for more details.</p>
+<p>By default, melody only output the information about the best model selected. If users want to see the information about all models of different sizes on the search path, set <code>output.best.one = FALSE</code>. See <code>help(melody)</code> for more details.</p>
 <p>The following is the coefficient of all the features in the best model (the features with non-zero coefficients are the selected signatures):</p>
 <p>meta.result$coef</p>
-<p>If verbose=TRUE, generate two plots shown below and print information about the progress of meta-analysis.</p>
+<p>If <code>verbose=TRUE</code>, generate two plots shown below and print information about the progress of meta-analysis.</p>
 <pre class="r"><code># Pick a reference taxa
 ref &lt;- &quot;Coprococcus catus [ref_mOTU_v2_4874]&quot;
 
@@ -2061,7 +2063,7 @@ Figure 3: <span class="caption-title">a plot showing the absolute-abundance coef
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.3.1 (2023-06-16)
 ## Platform: aarch64-apple-darwin20 (64-bit)
-## Running under: macOS Ventura 13.5.2
+## Running under: macOS Sonoma 14.0
 ## 
 ## Matrix products: default
 ## BLAS:   /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRblas.0.dylib 
@@ -2077,31 +2079,33 @@ Figure 3: <span class="caption-title">a plot showing the absolute-abundance coef
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-##  [1] DT_0.29          lubridate_1.9.2  forcats_1.0.0    stringr_1.5.0   
-##  [5] dplyr_1.1.2      purrr_1.0.1      readr_2.1.4      tidyr_1.3.0     
-##  [9] tibble_3.2.1     ggplot2_3.4.2    tidyverse_2.0.0  miMeta_0.1.0    
+##  [1] lubridate_1.9.2  forcats_1.0.0    stringr_1.5.0    dplyr_1.1.3     
+##  [5] purrr_1.0.1      readr_2.1.4      tidyr_1.3.0      tibble_3.2.1    
+##  [9] tidyverse_2.0.0  ggplot2_3.4.3    DT_0.29          miMeta_0.1.0    
 ## [13] BiocStyle_2.28.0
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] sass_0.4.7            utf8_1.2.3            generics_0.1.3       
-##  [4] enrichwith_0.3.1      stringi_1.7.12        lattice_0.21-8       
-##  [7] hms_1.1.3             digest_0.6.33         magrittr_2.0.3       
-## [10] timechange_0.2.0      evaluate_0.21         grid_4.3.1           
-## [13] brglm2_0.9            bookdown_0.35         fastmap_1.1.1        
-## [16] plyr_1.8.8            jsonlite_1.8.7        Matrix_1.6-0         
-## [19] nnet_7.3-19           gridExtra_2.3         BiocManager_1.30.21.1
-## [22] fansi_1.0.4           scales_1.2.1          UpSetR_1.4.0         
-## [25] numDeriv_2016.8-1.1   jquerylib_0.1.4       cli_3.6.1            
-## [28] rlang_1.1.1           munsell_0.5.0         withr_2.5.0          
-## [31] cachem_1.0.8          yaml_2.3.7            tools_4.3.1          
-## [34] tzdb_0.4.0            colorspace_2.1-0      abess_0.4.7          
-## [37] vctrs_0.6.3           R6_2.5.1              lifecycle_1.0.3      
-## [40] htmlwidgets_1.6.2     MASS_7.3-60           pkgconfig_2.0.3      
-## [43] pillar_1.9.0          bslib_0.5.0           gtable_0.3.3         
-## [46] glue_1.6.2            Rcpp_1.0.11           highr_0.10           
-## [49] xfun_0.39             tidyselect_1.2.0      rstudioapi_0.15.0    
-## [52] knitr_1.43            farver_2.1.1          htmltools_0.5.5      
-## [55] labeling_0.4.2        rmarkdown_2.23        compiler_4.3.1</code></pre>
+##  [1] gtable_0.3.4          xfun_0.39             bslib_0.5.0          
+##  [4] htmlwidgets_1.6.2     lattice_0.21-8        tzdb_0.4.0           
+##  [7] vctrs_0.6.3           tools_4.3.1           generics_0.1.3       
+## [10] parallel_4.3.1        fansi_1.0.4           highr_0.10           
+## [13] pkgconfig_2.0.3       Matrix_1.6-0          lifecycle_1.0.3      
+## [16] compiler_4.3.1        farver_2.1.1          abess_0.4.8          
+## [19] textshaping_0.3.6     munsell_0.5.0         codetools_0.2-19     
+## [22] htmltools_0.5.5       sass_0.4.7            yaml_2.3.7           
+## [25] pillar_1.9.0          jquerylib_0.1.4       MASS_7.3-60          
+## [28] cachem_1.0.8          iterators_1.0.14      foreach_1.5.2        
+## [31] tidyselect_1.2.0      digest_0.6.33         stringi_1.7.12       
+## [34] bookdown_0.35         labeling_0.4.3        fastmap_1.1.1        
+## [37] grid_4.3.1            colorspace_2.1-0      cli_3.6.1            
+## [40] magrittr_2.0.3        utf8_1.2.3            withr_2.5.1          
+## [43] scales_1.2.1          timechange_0.2.0      rmarkdown_2.23       
+## [46] gridExtra_2.3         ragg_1.2.5            hms_1.1.3            
+## [49] evaluate_0.21         knitr_1.43            UpSetR_1.4.0         
+## [52] doParallel_1.0.17     rlang_1.1.1           Rcpp_1.0.11          
+## [55] glue_1.6.2            BiocManager_1.30.21.1 rstudioapi_0.15.0    
+## [58] jsonlite_1.8.7        R6_2.5.1              plyr_1.8.8           
+## [61] systemfonts_1.0.4</code></pre>
 </div>
 <div id="reference" class="section level1" number="6">
 <h1><span class="header-section-number">6</span> Reference</h1>

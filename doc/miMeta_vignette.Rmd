@@ -30,21 +30,29 @@ editor_options:
 Install package from github.
 
 ```{r getPackage, echo=TRUE}
-devtools::install_github("ZjpWei/miMeta")
+if(!require("miMeta", quietly = TRUE)){
+  devtools::install_github("ZjpWei/miMeta")
+}
 ```
 
-Load the package. 
+Load the packages. 
 
 ```{r load, echo=TRUE}
-library(miMeta)
-library(tidyverse)
-library(DT)
-library(ggplot2)
+library("miMeta")
+library("DT")
+library("ggplot2")
+library("tidyverse")
 ```
 
 # Meta-analysis given all samples of all participating studies
 
-There are two approaches miMeta can run meta-analysis. Approach #1: If the individual-level sample data across all participating studies are available, the function melody can take these data as input, generate summary statistics for each study internally, and combine the summary statistics to select microbial signatures. Approach #2: If individual-level samples of each study are not in a central place and/or come in sequentially, summary statistics can be generated for each study separately using the function melody.get.summary. Then, the summary statistics of all participating studies can be combined using the function melody.merge.summary, and finally, meta-analyzed using the function melody.meta.summary. We demonstrate Approach #1 in this session and Approach #2 in the next session.
+There are two approaches miMeta can run meta-analysis. 
+
+Approach #1: If the individual-level sample data across all participating studies are available, the function melody can take these data as input, generate summary statistics for each study internally, and combine the summary statistics to select microbial signatures. 
+
+Approach #2: If individual-level samples of each study are not in a central place and/or come in sequentially, summary statistics can be generated for each study separately using the function melody.get.summary. Then, the summary statistics of all participating studies can be combined using the function melody.merge.summary, and finally, meta-analyzed using the function melody.meta.summary. 
+
+We demonstrate Approach #1 in this session and Approach #2 in the next session.
 
 Here we use the datasets from the five metagenomics studies of colorectal cancer (CRC) [2] to demonstrate the use of each function. The "CRC_abd" is a feature-by-sample matrix of species-level relative abundance counts from the five studies. For the easy of demonstration, we include 267 species under order *Clostridiales*.  The "meta" is a data frame including the sample-level variables from the five studies. In particular, the following variables are in the meta data:
 
@@ -59,13 +67,13 @@ data("CRC_abd", "meta", package = "miMeta")
 table(meta[,c("Study", "Group")])
 ```
 
-By default, melody only output the information about the best model selected. If users want to see the information about all models of different sizes on the search path, set output.best.one=FALSE. See help(melody) for more details.
+By default, melody only output the information about the best model selected. If users want to see the information about all models of different sizes on the search path, set `output.best.one = FALSE`. See `help(melody)` for more details.
 
 The following is the coefficient of all the features in the best model (the features with non-zero coefficients are the selected signatures):
 
 meta.result$coef
 
-If verbose=TRUE, generate two plots shown below and print information about the progress of meta-analysis. 
+If `verbose=TRUE`, generate two plots shown below and print information about the progress of meta-analysis. 
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.cap="a plot for microbial feature overlap among studies: this plot shows the number of features shared among studies. "}
 # Pick a reference taxa
