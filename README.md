@@ -12,7 +12,7 @@ See following items for more details:
 
 ## Author
 
-Zhoujingpeng Wei @[Tang](https://tangzheng1.github.io/tanglab/)
+Zhoujingpeng Wei @[Tang Lab](https://tangzheng1.github.io/tanglab/)
 
 Department of Biostatistics and Medical Informatics, University of Wisconsin-Madison
 
