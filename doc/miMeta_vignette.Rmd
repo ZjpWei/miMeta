@@ -27,12 +27,10 @@ editor_options:
 
 # Installation
 
-Download package from github.
+Install package from github.
 
 ```{r getPackage, echo=TRUE}
-# if (!requireNamespace("BiocManager", quietly = TRUE))
-#     install.packages("BiocManager")
-# BiocManager::install("miMeta")
+devtools::install_github("ZjpWei/miMeta")
 ```
 
 Load the package. 
