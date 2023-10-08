@@ -76,6 +76,7 @@
 #' \code{\link{melody.meta.summary}},
 #' \code{\link{melody.merge.summary}},
 #'
+#' @importFrom brglm2 brglmFit
 #' @export
 #'
 #' @examples

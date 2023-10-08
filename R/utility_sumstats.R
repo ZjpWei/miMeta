@@ -1,7 +1,7 @@
 #' @import parallel
 #' @import foreach
 #' @import doParallel
-
+#' @importFrom brglm2 brglmFit
 
 ######## Utility file for generating summary statistics ########
 ## this function summarizes the summary statistics
@@ -29,82 +29,50 @@ Get_summary_wald = function(Melody,
       stop("The number of cores cannot be 0 or negative number.\n")
     }
   }
-  if(parallel.core == 1){
-    summary.stat.study <- list()
-    taxa.set <- list()
-    for(l in 1:L){
-      data.beta <- Melody$reg.fit[[l]]$data.beta
-      tmp <- Melody$reg.fit[[l]]$tmp
-      ref <- Melody$reg.fit[[l]]$ref
-      taxa.vec <- Melody$reg.fit[[l]]$taxa.set
-      summary.stats <- get_ridge_sumstat_wald(data.beta = data.beta,
-                                              summarys = tmp,
-                                              G = G, shrehold = shrehold,
-                                              cov.type = cov.type,
-                                              verbose = verbose)
-      # if(verbose){
-      #   message("++ Summarizing summary statistics for study ", as.character(l), ". ++")
-      # }
-      tmp.l.taxa.name <- names(taxa.vec)[taxa.vec]
-      names(summary.stats$est) <- tmp.l.taxa.name
-      rownames(summary.stats$cov) <- tmp.l.taxa.name
-      colnames(summary.stats$cov) <- tmp.l.taxa.name
-      rownames(summary.stats$sandwich) <- tmp.l.taxa.name
-      colnames(summary.stats$sandwich) <- tmp.l.taxa.name
-      summary.stat.swd = list(est=summary.stats$est,
-                              cov=summary.stats$cov,
-                              n = summary.stats$n,
-                              sandwich.cov = summary.stats$sandwich,
-                              ref = ref,
-                              idx.rev = Melody$reg.fit[[l]]$idx.rev,
-                              para.id = l)
-      taxa.set[[l]] <- Melody$reg.fit[[l]]$taxa.set
-      summary.stat.study[[l]] <- summary.stat.swd
-    }
-  }else{
-    cl <- makeCluster(parallel.core[1])
-    registerDoParallel(cl)
-
-    summary.stat.study <- foreach(l = 1:L) %dopar% {
-      data.beta <- Melody$reg.fit[[l]]$data.beta
-      tmp <- Melody$reg.fit[[l]]$tmp
-      ref <- Melody$reg.fit[[l]]$ref
-      taxa.vec <- Melody$reg.fit[[l]]$taxa.set
-      summary.stats <- get_ridge_sumstat_wald(data.beta = data.beta,
-                                              summarys = tmp,
-                                              G = G, shrehold = shrehold,
-                                              cov.type = cov.type,
-                                              verbose = verbose)
-      # if(verbose){
-      #   message("++ Summarizing summary statistics for study ", as.character(l), ". ++")
-      # }
-      tmp.l.taxa.name <- names(taxa.vec)[taxa.vec]
-      names(summary.stats$est) <- tmp.l.taxa.name
-      rownames(summary.stats$cov) <- tmp.l.taxa.name
-      colnames(summary.stats$cov) <- tmp.l.taxa.name
-      rownames(summary.stats$sandwich) <- tmp.l.taxa.name
-      colnames(summary.stats$sandwich) <- tmp.l.taxa.name
-      summary.stat.swd = list(est=summary.stats$est,
-                              cov=summary.stats$cov,
-                              n = summary.stats$n,
-                              sandwich.cov = summary.stats$sandwich,
-                              ref = ref,
-                              idx.rev = Melody$reg.fit[[l]]$idx.rev,
-                              para.id = l)
-      summary.stat.swd
-    }
-    ### stop cluster
-    stopCluster(cl)
-    ### reorder output
-    taxa.set <- list()
-    order.vec <- c()
-    for(l in 1:L){
-      order.vec <- c(order.vec, summary.stat.study[[l]]$para.id)
-      summary.stat.study[[l]]$para.id <- NULL
-      taxa.set[[l]] <- Melody$reg.fit[[l]]$taxa.set
-    }
-    summary.stat.study <- summary.stat.study[order(order.vec)]
+  cl <- makeCluster(parallel.core[1])
+  registerDoParallel(cl)
+  if(verbose){
+    message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
   }
+  summary.stat.study <- foreach(l = 1:L, .packages = "brglm2") %dopar% {
+    data.beta <- Melody$reg.fit[[l]]$data.beta
+    tmp <- Melody$reg.fit[[l]]$tmp
+    ref <- Melody$reg.fit[[l]]$ref
+    taxa.vec <- Melody$reg.fit[[l]]$taxa.set
+    summary.stats <- get_ridge_sumstat_wald(data.beta = data.beta,
+                                            summarys = tmp,
+                                            G = G, shrehold = shrehold,
+                                            cov.type = cov.type,
+                                            verbose = verbose)
+    # if(verbose){
+    #   message("++ Summarizing summary statistics for study ", as.character(l), ". ++")
+    # }
+    tmp.l.taxa.name <- names(taxa.vec)[taxa.vec]
+    names(summary.stats$est) <- tmp.l.taxa.name
+    rownames(summary.stats$cov) <- tmp.l.taxa.name
+    colnames(summary.stats$cov) <- tmp.l.taxa.name
+    rownames(summary.stats$sandwich) <- tmp.l.taxa.name
+    colnames(summary.stats$sandwich) <- tmp.l.taxa.name
+    summary.stat.swd = list(est=summary.stats$est,
+                            cov=summary.stats$cov,
+                            n = summary.stats$n,
+                            sandwich.cov = summary.stats$sandwich,
+                            ref = ref,
+                            idx.rev = Melody$reg.fit[[l]]$idx.rev,
+                            para.id = l)
+    summary.stat.swd
+  }
+  ### stop cluster
+  stopCluster(cl)
+  ### reorder output
+  taxa.set <- list()
+  order.vec <- c()
+  for(l in 1:L){
+    order.vec <- c(order.vec, summary.stat.study[[l]]$para.id)
+    summary.stat.study[[l]]$para.id <- NULL
+    taxa.set[[l]] <- Melody$reg.fit[[l]]$taxa.set
+  }
+  summary.stat.study <- summary.stat.study[order(order.vec)]
 
   Melody$summary.stat.study <- summary.stat.study
   Melody$taxa.set <- taxa.set
@@ -130,6 +98,7 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, parall
       data.avr.prop <- colMeans(data.prop)
       maximum.CV <- rbind(maximum.CV, apply(data.prop, 2, sd)/data.avr.prop)
     }
+    maximum.CV[is.na(maximum.CV)] <- Inf
     colnames(maximum.CV) <- Melody$dat.inf$taxa.names
     if(L == 1){
       ref <- Melody$dat.inf$taxa.names[which.min(maximum.CV)]
@@ -179,89 +148,56 @@ reg.fit.wald = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, parall
       stop("The number of cores cannot be 0 or negative number.\n")
     }
   }
-  ### setup parallel jobs
-  if(parallel.core == 1){
-    reg.fit <- list()
-    for(l in 1:L){
-      Y.sub <- data.relative[[l]]$Y
-      X.sub <- cbind(1, data.relative[[l]]$X)
-      colnames(X.sub) <- c("Intercept", paste0("V_", as.character(1:(ncol(X.sub)-1))))
-      taxa.set.tmp <- colSums(Y.sub != 0)[1:(ncol(Y.sub)-1)] > filter.threshold
-      Y.sub.tmp <- Y.sub[,c(taxa.set.tmp,TRUE)]
-      ### check if any taxa's correlation are 1.
-      cors <- cor(Y.sub.tmp)
-      lo_tri <- lower.tri(cors, diag = TRUE)
-      cors[lo_tri] <- 0
-      if(!all(abs(cors) != 1)){
-        row_col <- which(cors == 1, arr.ind = TRUE)
-        row_id <- unique(row_col[,"row"])
-        col_id <- unique(row_col[,"col"])
-        tax.rm <- colnames(Y.sub)[row_id]
-        tax.kp <- colnames(Y.sub)[col_id]
-        taxa.set.tmp[tax.rm] <- FALSE
-        warning("Some features have high correlation in study ", study.names[l], ", Rmove features:\n",
-                paste0("    ",tax.rm,"\n"))
-
-      }
-      Y.sub <- Y.sub[,c(taxa.set.tmp,TRUE)]
-      data.beta <- list(Y = Y.sub, X = X.sub, SUB.id = SUB.id[[l]])
-      # if(verbose){
-      #   message(paste0("++ Fitting model for study ",  study.names[l], ". ++"))
-      # }
-      tmp <- GetGlm.wald(data.beta = data.beta, X.idx = ncol(X.sub))
-      reg.fit[[l]] <- list(tmp = tmp, data.beta = data.beta, taxa.set = taxa.set.tmp,
-                           ref = ref[l], idx.rev = idx.rev)
-    }
-  }else{
-    cl <- makeCluster(parallel.core[1])
-    registerDoParallel(cl)
-    if(verbose){
-      message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
-    }
-    reg.fit <- foreach(l = 1:L) %dopar% {
-      Y.sub <- data.relative[[l]]$Y
-      X.sub <- cbind(1, data.relative[[l]]$X)
-      colnames(X.sub) <- c("Intercept", paste0("V_", as.character(1:(ncol(X.sub)-1))))
-      taxa.set.tmp <- colSums(Y.sub != 0)[1:(ncol(Y.sub)-1)] > filter.threshold
-      Y.sub.tmp <- Y.sub[,c(taxa.set.tmp,TRUE)]
-      ### check if any taxa's correlation are 1.
-      cors <- cor(Y.sub.tmp)
-      lo_tri <- lower.tri(cors, diag = TRUE)
-      cors[lo_tri] <- 0
-      if(!all(abs(cors) != 1)){
-        row_col <- which(cors == 1, arr.ind = TRUE)
-        row_id <- unique(row_col[,"row"])
-        col_id <- unique(row_col[,"col"])
-        tax.rm <- colnames(Y.sub)[row_id]
-        tax.kp <- colnames(Y.sub)[col_id]
-        taxa.set.tmp[tax.rm] <- FALSE
-        warning("Some features have high correlation in study ", study.names[l], ", Rmove features:\n",
-                paste0("    ",tax.rm,"\n"))
-
-      }
-      Y.sub <- Y.sub[,c(taxa.set.tmp,TRUE)]
-      data.beta <- list(Y = Y.sub, X = X.sub, SUB.id = SUB.id[[l]])
-      # if(verbose){
-      #   message(paste0("++ Fitting model for study ",  study.names[l], ". ++"))
-      # }
-      tmp <- GetGlm.wald(data.beta = data.beta, X.idx = ncol(X.sub))
-      reg.fit.one <- list(tmp = tmp, data.beta = data.beta, taxa.set = taxa.set.tmp,
-                          ref = ref[l], idx.rev = idx.rev, para.id = l)
-
-      ### output
-      reg.fit.one
-    }
-    ### stop cluster
-    stopCluster(cl)
-
-    ### reorder output
-    order.vec <- c()
-    for(l in 1:L){
-      order.vec <- c(order.vec, reg.fit[[l]]$para.id)
-      reg.fit[[l]]$para.id <- NULL
-    }
-    reg.fit <- reg.fit[order(order.vec)]
+  if(verbose){
+    message(parallel.core[1], " cores are used for generating summary statistics.")
   }
+
+  ### setup parallel jobs
+  cl <- makeCluster(parallel.core[1])
+  registerDoParallel(cl)
+  reg.fit <- foreach(l = 1:L, .packages = "brglm2") %dopar% {
+    Y.sub <- data.relative[[l]]$Y
+    X.sub <- cbind(1, data.relative[[l]]$X)
+    colnames(X.sub) <- c("Intercept", paste0("V_", as.character(1:(ncol(X.sub)-1))))
+    taxa.set.tmp <- colSums(Y.sub != 0)[1:(ncol(Y.sub)-1)] > filter.threshold
+    Y.sub.tmp <- Y.sub[,c(taxa.set.tmp,TRUE)]
+    ### check if any taxa's correlation are 1.
+    cors <- cor(Y.sub.tmp)
+    lo_tri <- lower.tri(cors, diag = TRUE)
+    cors[lo_tri] <- 0
+    if(!all(abs(cors) != 1)){
+      row_col <- which(cors == 1, arr.ind = TRUE)
+      row_id <- unique(row_col[,"row"])
+      col_id <- unique(row_col[,"col"])
+      tax.rm <- colnames(Y.sub)[row_id]
+      tax.kp <- colnames(Y.sub)[col_id]
+      taxa.set.tmp[tax.rm] <- FALSE
+      warning("Some features have high correlation in study ", study.names[l], ", Rmove features:\n",
+              paste0("    ",tax.rm,"\n"))
+
+    }
+    Y.sub <- Y.sub[,c(taxa.set.tmp,TRUE)]
+    data.beta <- list(Y = Y.sub, X = X.sub, SUB.id = SUB.id[[l]])
+    # if(verbose){
+    #   message(paste0("++ Fitting model for study ",  study.names[l], ". ++"))
+    # }
+    tmp <- GetGlm.wald(data.beta = data.beta, X.idx = ncol(X.sub))
+    reg.fit.one <- list(tmp = tmp, data.beta = data.beta, taxa.set = taxa.set.tmp,
+                        ref = ref[l], idx.rev = idx.rev, para.id = l)
+
+    ### output
+    reg.fit.one
+  }
+  ### stop cluster
+  stopCluster(cl)
+
+  ### reorder output
+  order.vec <- c()
+  for(l in 1:L){
+    order.vec <- c(order.vec, reg.fit[[l]]$para.id)
+    reg.fit[[l]]$para.id <- NULL
+  }
+  reg.fit <- reg.fit[order(order.vec)]
 
   Melody$dat.inf$ref <- ref
   Melody$reg.fit <- reg.fit
@@ -278,15 +214,27 @@ GetGlm.wald <- function(data.beta, X.idx){
   n.beta = (K-1)*d
   par.interest.index.beta = kronecker(1,((0:(K-2))*d)) + X.idx
   est.single = NULL
-  for(k in 1:(K-1)){
-    tmp = cbind(data.beta$Y[,K], data.beta$Y[,k])
-    N = rowSums(tmp)
-    idx.subj = which(N>0)
-    input.data.tmp = list(Y=tmp[idx.subj,], X = data.beta$X[idx.subj,-1])
-    multinom.out.tmp = brglm2::brmultinom(Y ~ X , input.data.tmp, type = "AS_mean")
-    est.single = c(est.single,  multinom.out.tmp$coefficients[-c(1:(length(multinom.out.tmp$coefficients) - d))] )
-  }
+  suppressWarnings(
+    for(k in 1:(K-1)){
+      tmp = cbind(data.beta$Y[,K], data.beta$Y[,k])
+      N = rowSums(tmp)
+      idx.subj = which(N>0)
+      input.data.tmp = list(Y=tmp[idx.subj,], X = data.beta$X[idx.subj,-1])
+      # Try brglmFit model
+
+      glm.out.tmp =  glm(Y ~ X, data = input.data.tmp,
+                         family = binomial(logit), method = "brglmFit", type = "AS_mean")
+      if(glm.out.tmp$converged){
+        est.single = c(est.single, - glm.out.tmp$coefficients)
+      }else{
+        # Apply brmultinom if brglmFit model is not converged
+        multinom.out.tmp = brglm2::brmultinom(Y ~ X , input.data.tmp, type = "AS_mean")
+        est.single = c(est.single,  multinom.out.tmp$coefficients[-c(1:(length(multinom.out.tmp$coefficients) - d))] )
+      }
+    }
+  )
   est.single <- matrix(est.single, nrow = d)
+  colnames(est.single) <- colnames(data.beta$Y)[1:(K-1)]
   summary = list(est=est.single, n=n)
   return(summary)
 }
@@ -306,7 +254,6 @@ get_cov_sand_wald <- function(summary.stat, data.beta, K){
   X <- data.beta$X
   N <- rowSums(data.beta$Y)
   Y <- data.beta$Y
-
   name.cov <- paste0(X.name, ":", as.character(sort(rep(1:(K-1),ncol(data.beta$X)))))
   pp_mat <- NULL
   for(i in 1:n){
@@ -315,7 +262,6 @@ get_cov_sand_wald <- function(summary.stat, data.beta, K){
     pp <- pp/sum(pp)
     pp_mat <- rbind(pp_mat, pp[1:(K-1)])
   }
-
   s.i.lst <- NULL
   B <- matrix(0, ncol(data.beta$X)*(K-1), ncol(data.beta$X)*(K-1))
   A <- 0
@@ -330,7 +276,6 @@ get_cov_sand_wald <- function(summary.stat, data.beta, K){
     s.i.lst <- rbind(s.i.lst, s.i.SUB)
     B <- B + s.i.lst[l,]  %*% t(s.i.lst[l,])
   }
-  #return(A)
   cov_R <- solve(A)
   A_d <- diag(sqrt(diag(A/n)))
   R_A <- A / (sqrt(diag(A)) %*% t(sqrt(diag(A))))
@@ -454,8 +399,9 @@ get_ridge_sumstat_wald <- function(data.beta, summarys, G, shrehold, cov.type = 
   SUBid <- as.character(data.beta$SUB.id)
   uniq.SUBid <- unique(SUBid)
   nn <- length(uniq.SUBid)
-  R_lst <- get_cov_sand_wald(summary.stat = summarys,data.beta = data.beta, K = K)
-  set.seed(2022)
+  R_lst <- get_cov_sand_wald(summary.stat = summarys, data.beta = data.beta, K = K)
+  # return(R_lst)
+  set.seed(2023)
   sample.id <- split(sample(nn), (1:nn)%%G)
   summary <- list()
   summary$est <- c(R_lst$est[,X.name[length(X.name)]])
@@ -468,9 +414,8 @@ get_ridge_sumstat_wald <- function(data.beta, summarys, G, shrehold, cov.type = 
     loop_mat <- Calc.pearson.wald(loop_mat, R_lst, sample.id, lambda, G)
     lambda <- (loop_mat["lambda",loop_mat["Pearson.R",] == max(loop_mat["Pearson.R",])])[1]
     colnames(loop_mat) <- paste0("Tn", as.character(1:ncol(loop_mat)))
-    print(loop_mat[1:2,])
     if(verbose){
-      cat("Tuning ridge parameter : ",lambda, ".\n")
+      message("Tuning ridge parameter : ",lambda, ".\n")
     }
     summary$loop_mat <- loop_mat
   }else if(cov.type == "diag"){

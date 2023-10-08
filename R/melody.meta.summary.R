@@ -14,7 +14,6 @@
 #'
 #' @import dplyr
 #' @import ggplot2
-#'
 #' @export
 #'
 #' @examples

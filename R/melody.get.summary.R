@@ -17,6 +17,7 @@
 #'
 #' @import UpSetR
 #' @import doParallel
+#' @importFrom brglm2 brglmFit
 #' @export
 #'
 #' @examples
@@ -93,6 +94,19 @@ melody.get.summary <- function(rel.abd,
       stop("covariates don't match variables in sample.data.\n")
     }
   }
+  ### match sample.data and rel.abd
+  if(ncol(rel.abd) != nrow(sample.data)){
+    stop("The sample size is not identical between rel.abd and sample.id.\n")
+  }
+  if(!all(sample.data[[sample.id]] == colnames(rel.abd))){
+    stop("The sample id cannot match between rel.abd and sample.id.\n")
+  }
+
+  ### Filter the samples using depth.filter
+  depth.kp <- colSums(rel.abd) > depth.filter
+  rel.abd <- rel.abd[,depth.kp]
+  sample.data <- sample.data[depth.kp,]
+
   ### Match samples in relative abundant counts and sample data
   study.names <- as.character(unique(sample.data[[study]]))
   IDs <- sample.data[[sample.id]]
@@ -103,9 +117,6 @@ melody.get.summary <- function(rel.abd,
   k <- 1
   for(l in 1:L){
     sampleID <- IDs[study.names[l] == sample.data[[study]]]
-    if(!all(sampleID %in% colnames(rel.abd))){
-      stop(paste0("Some samples in study ", study.names[l], " don't match the sample in rel.abd.\n"))
-    }
     Y.pool <- t(rel.abd[,sampleID])
     if(length(Y.pool) == 0){
       warning(paste0("Less than 20 samples in study ", study.names[l], ", the summary statistics is not stable.",
@@ -133,8 +144,13 @@ melody.get.summary <- function(rel.abd,
       }else{
         for(cov_name in covariates){
           if(is.factor(sample.data[[cov_name]])){
-            dummys <- as.data.frame(model.matrix(formula(paste("~", cov_name)), data = sample.data[study.names[l] == sample.data[[study]], ]))
-            X.pool <- cbind(dummys[,-1], X.pool)
+            dummys <- as.data.frame(model.matrix(formula(paste("~", cov_name)),
+                                                 data = sample.data[study.names[l] == sample.data[[study]], ]))
+            X.pool <- as.matrix(cbind(dummys[,-1], X.pool))
+          }else if(is.character(sample.data[[cov_name]])){
+            dummys <- as.data.frame(model.matrix(formula(paste("~", cov_name)),
+                                                 data = sample.data[study.names[l] == sample.data[[study]], ]))
+            X.pool <- as.matrix(cbind(dummys[,-1], X.pool))
           }else{
             X.pool <- cbind(sample.data[[cov_name]], X.pool)
           }
@@ -143,16 +159,6 @@ melody.get.summary <- function(rel.abd,
       }
       k <- k + 1
     }
-  }
-  ### Filter the samples using depth.filter
-  for(l in 1:L){
-    depth.kp <- rowSums(dat[[l]]$Y) > depth.filter
-    if(is.null(covariates)){
-      dat[[l]]$X <- dat[[l]]$X[depth.kp]
-    }else{
-      dat[[l]]$X <- dat[[l]]$X[depth.kp,]
-    }
-    dat[[l]]$Y <- dat[[l]]$Y[depth.kp,]
   }
 
   ### Create Melody object
@@ -177,7 +183,7 @@ melody.get.summary <- function(rel.abd,
   summary.stat.study$dat <- NULL
   summary.stat.study$reg.fit <- NULL
 
-  if(verbose){
+  if(verbose & L > 1){
     ### Generate Upset plot
     taxa.mat <- matrix(FALSE,
                        nrow = summary.stat.study$dat.inf$L,
@@ -192,10 +198,12 @@ melody.get.summary <- function(rel.abd,
     input <- list()
     taxa.names <- summary.stat.study$dat.inf$taxa.names
     for(l in 1:ncol(taxa.mat)){
-      if(!paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&") %in% names(input)){
-        input[[paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&")]] <- 1
-      }else{
-        input[[paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&")]] <- input[[paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&")]] + 1
+      if(paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&") != ""){
+        if(!paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&") %in% names(input)){
+          input[[paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&")]] <- 1
+        }else{
+          input[[paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&")]] <- input[[paste0(summary.stat.study$dat.inf$study.names[taxa.mat[,l]], collapse = "&")]] + 1
+        }
       }
     }
 

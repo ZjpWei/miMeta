@@ -65,6 +65,7 @@ Here we use the datasets from the five metagenomics studies of colorectal cancer
 ```{r echo=TRUE}
 data("CRC_abd", "meta", package = "miMeta")
 table(meta[,c("Study", "Group")])
+CRC_abd <- CRC_abd[,meta$Sample_ID]
 ```
 
 By default, melody only output the information about the best model selected. If users want to see the information about all models of different sizes on the search path, set `output.best.one = FALSE`. See `help(melody)` for more details.
@@ -86,6 +87,7 @@ meta.result <- melody(rel.abd = CRC_abd,
                       study = "Study",
                       disease = "Group",
                       ref = ref,
+                      parallel.core = 1,
                       verbose = TRUE)
 ```
 
