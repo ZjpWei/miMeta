@@ -346,7 +346,7 @@ melody.meta.summary <- function(Melody,
     }else{
       min.id <- which.min(results.all$dev + results.all$ic)
       taxa_tab <- data.frame(taxa = names(which(results.all$coef[,min.id]!=0)),
-                             coef = as.numeric(results.all$coef[results.all$coef[,min.id]!=0]))
+                             coef = as.numeric(results.all$coef[results.all$coef[,min.id]!=0,min.id]))
     }
 
     ggp1 <- taxa_tab %>% arrange(coef) %>%
