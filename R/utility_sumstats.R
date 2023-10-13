@@ -220,17 +220,10 @@ GetGlm.wald <- function(data.beta, X.idx){
       N = rowSums(tmp)
       idx.subj = which(N>0)
       input.data.tmp = list(Y=tmp[idx.subj,], X = data.beta$X[idx.subj,-1])
-      # Try brglmFit model
-
-      glm.out.tmp =  glm(Y ~ X, data = input.data.tmp,
-                         family = binomial(logit), method = "brglmFit", type = "AS_mean")
-      if(glm.out.tmp$converged){
-        est.single = c(est.single, - glm.out.tmp$coefficients)
-      }else{
-        # Apply brmultinom if brglmFit model is not converged
-        multinom.out.tmp = brglm2::brmultinom(Y ~ X , input.data.tmp, type = "AS_mean")
-        est.single = c(est.single,  multinom.out.tmp$coefficients[-c(1:(length(multinom.out.tmp$coefficients) - d))] )
-      }
+  
+      # Apply brmultinom if brglmFit model is not converged
+      multinom.out.tmp = brglm2::brmultinom(Y ~ X , input.data.tmp, type = "AS_mean")
+      est.single = c(est.single,  multinom.out.tmp$coefficients[-c(1:(length(multinom.out.tmp$coefficients) - d))] )
     }
   )
   est.single <- matrix(est.single, nrow = d)
