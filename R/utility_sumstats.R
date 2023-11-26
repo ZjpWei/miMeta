@@ -214,14 +214,13 @@ GetGlm <- function(data.beta, X.idx){
       tmp = cbind(data.beta$Y[,K], data.beta$Y[,k])
       N = rowSums(tmp)
       idx.subj = which(N>0)
-<<<<<<< HEAD
       tmp.X <- data.beta$X[idx.subj,]
       X.idx.id <- colnames(tmp.X)[X.idx]
       # Test the singularity
       qrstr <- qr(tmp.X[,c(1, X.idx, setdiff(1:d, c(1,X.idx)))])
       # Check pivot
       if(!all(qrstr$pivot[c(1,2)] %in% c(1,2))){
-        stop("This reference cannot work, please select another one.\n")
+        stop("This reference cannot work, please select another one.")
       }
       # Get non-singular sub-columns
       tmp.X <- tmp.X[,colnames(tmp.X) %in% colnames(qrstr$qr)[1:qrstr$rank]]
@@ -251,13 +250,6 @@ GetGlm <- function(data.beta, X.idx){
         est.single[intersect(names(multinom.out.tmp$coefficients), dim.name),k] <-
           multinom.out.tmp$coefficients[intersect(names(multinom.out.tmp$coefficients), dim.name)]
       }
-=======
-      input.data.tmp = list(Y=tmp[idx.subj,], X = data.beta$X[idx.subj,-1])
-  
-      # Apply brmultinom if brglmFit model is not converged
-      multinom.out.tmp = brglm2::brmultinom(Y ~ X , input.data.tmp, type = "AS_mean")
-      est.single = c(est.single,  multinom.out.tmp$coefficients[-c(1:(length(multinom.out.tmp$coefficients) - d))] )
->>>>>>> f6aa2b0b419f83061dd5fe118df8e43d40ac0edf
     }
   )
   summary = list(est=est.single, n=n)
