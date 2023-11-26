@@ -9,7 +9,7 @@ melody.meta.summary(
   tune.path = c("gsection", "sequence"),
   tune.size.sequence = NULL,
   tune.size.range = NULL,
-  tune.type = c("HBIC", "BIC", "KBIC", "EBIC"),
+  tune.type = c("BIC", "HBIC", "KBIC", "EBIC"),
   ouput.best.one = TRUE,
   tol = 0.001,
   verbose = FALSE

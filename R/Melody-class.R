@@ -21,3 +21,4 @@ Melody <- R6Class("Melody", list(
     }
   }
 ))
+

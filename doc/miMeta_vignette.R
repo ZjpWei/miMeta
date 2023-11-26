@@ -12,6 +12,7 @@ library("tidyverse")
 ## ----echo=TRUE----------------------------------------------------------------
 data("CRC_abd", "meta", package = "miMeta")
 table(meta[,c("Study", "Group")])
+CRC_abd <- CRC_abd[,meta$Sample_ID]
 
 ## ----echo=TRUE, message=FALSE, warning=FALSE, fig.cap="a plot for microbial feature overlap among studies: this plot shows the number of features shared among studies. "----
 # Pick a reference taxa
@@ -24,6 +25,7 @@ meta.result <- melody(rel.abd = CRC_abd,
                       study = "Study",
                       disease = "Group",
                       ref = ref,
+                      parallel.core = 1,
                       verbose = TRUE)
 
 ## ----echo=FALSE, fig.cap="a plot showing the absolute-abundance coefficient estimates of the selected microbial features in the best model under the best subset size."----

@@ -53,7 +53,7 @@ melody.get.summary <- function(rel.abd,
                                verbose = FALSE) {
 
   cov.type <- match.arg(cov.type)
-  ## Check input data
+  #=== Check input data ===#
   if(verbose){
     message("++ Checking input data. ++")
   }
@@ -102,12 +102,12 @@ melody.get.summary <- function(rel.abd,
     stop("The sample id cannot match between rel.abd and sample.id.\n")
   }
 
-  ### Filter the samples using depth.filter
+  #=== Filter the samples using depth.filter ===#
   depth.kp <- colSums(rel.abd) > depth.filter
   rel.abd <- rel.abd[,depth.kp]
   sample.data <- sample.data[depth.kp,]
 
-  ### Match samples in relative abundant counts and sample data
+  #=== Match samples in relative abundant counts and sample data ===#
   study.names <- as.character(unique(sample.data[[study]]))
   IDs <- sample.data[[sample.id]]
   L <- length(study.names)
@@ -161,30 +161,30 @@ melody.get.summary <- function(rel.abd,
     }
   }
 
-  ### Create Melody object
+  #=== Create Melody object ===#
   summary.stat.study <- Melody$new(dat = dat)
   summary.stat.study$dat.inf$study.names <- study.id
 
-  ### Generate summary statistics
-  summary.stat.study <- reg.fit.wald(Melody = summary.stat.study,
-                                     SUB.id = SUB.id,
-                                     filter.threshold = prev.filter,
-                                     ref = ref,
-                                     parallel.core = parallel.core,
-                                     verbose = verbose)
+  #=== Generate summary statistics ===#
+  summary.stat.study <- reg.fit(Melody = summary.stat.study,
+                                SUB.id = SUB.id,
+                                filter.threshold = prev.filter,
+                                ref = ref,
+                                parallel.core = parallel.core,
+                                verbose = verbose)
 
-  ### Ridge regularization on covariate matrix
-  summary.stat.study <- Get_summary_wald(Melody = summary.stat.study,
-                                         cov.type = cov.type,
-                                         parallel.core = parallel.core,
-                                         verbose = verbose)
+  #=== Ridge regularization on covariate matrix ===#
+  summary.stat.study <- Get_summary(Melody = summary.stat.study,
+                                    cov.type = cov.type,
+                                    parallel.core = parallel.core,
+                                    verbose = verbose)
 
-  ### Remove raw data
+  #=== Remove raw data ===#
   summary.stat.study$dat <- NULL
   summary.stat.study$reg.fit <- NULL
 
   if(verbose & L > 1){
-    ### Generate Upset plot
+    # Generate Upset plot
     taxa.mat <- matrix(FALSE,
                        nrow = summary.stat.study$dat.inf$L,
                        ncol = summary.stat.study$dat.inf$K)

@@ -56,7 +56,7 @@ melody.meta.summary <- function(Melody,
                                 tune.path = c("gsection", "sequence"),
                                 tune.size.sequence = NULL,
                                 tune.size.range = NULL,
-                                tune.type = c("HBIC", "BIC", "KBIC", "EBIC"),
+                                tune.type = c("BIC", "HBIC", "KBIC", "EBIC"),
                                 ouput.best.one = TRUE,
                                 tol = 1e-3,
                                 verbose = FALSE){
@@ -72,18 +72,20 @@ melody.meta.summary <- function(Melody,
   taxa.set <- Melody$taxa.set
   L <- Melody$dat.inf$L
   K <- Melody$dat.inf$K
-
   quantile_sm <- NULL
+  delta.median <- NULL
   for(l in 1:L){
     tmp_qt <- quantile(summary.stat.study[[l]]$est, probs = c(0.1, 0.9))
+    delta.median <- c(delta.median, quantile(summary.stat.study[[l]]$est, probs = 0.5))
     quantile_sm <- rbind(quantile_sm, tmp_qt)
   }
-
   tune.set <- list()
   GIC.tau <- c()
   if(verbose){
     message("++ Searching best model. ++")
   }
+
+  #=========================================#
   search.loc <- rep(-Inf, L)
   tmp.result <- NULL
   GIC.result <- Inf
@@ -108,7 +110,7 @@ melody.meta.summary <- function(Melody,
       message("++ Searching progress. ++")
       pb <- txtProgressBar(max=length(support.sizes), style=3)
     }
-    ### Search best model by sequence
+    #=== Search best model by sequence ===#
     for(s.lambda in support.sizes){
       tmp.subset <- search.subset.s(Melody = Melody,
                                     L = L,
@@ -120,7 +122,7 @@ melody.meta.summary <- function(Melody,
                                     initial.range = 0.1,
                                     tune.type = tune.type,
                                     tol = tol,
-                                    verbose = FALSE)
+                                    verbose = verbose)
       if(s.lambda != sum(tmp.subset$tmp.result$mu.fit!=0)){
         tmp.subset <- search.subset.s(Melody = Melody,
                                       L = L,
@@ -132,7 +134,7 @@ melody.meta.summary <- function(Melody,
                                       initial.range = 0.1,
                                       tune.type = tune.type,
                                       tol = tol,
-                                      verbose = FALSE)
+                                      verbose = verbose)
       }
       tmp.result <- tmp.subset$tmp.result
       GIC.result <- tmp.subset$GIC.result
@@ -152,7 +154,7 @@ melody.meta.summary <- function(Melody,
     }
     if(ouput.best.one){
       coef <- min.result$mu.fit
-      delta <- min.result$ref_est
+      delta <- min.result$delta
       dev <- min.result$q_loss
       ic <- min.result$GIC.result - dev
       names(dev) <- as.character(sum(min.result$mu.fit))
@@ -171,7 +173,7 @@ melody.meta.summary <- function(Melody,
       ic <- NULL
       for(l in 1:length(tune.set)){
         coef <- cbind(coef, tune.set[[l]]$mu.fit)
-        delta <- cbind(delta, tune.set[[l]]$ref_est)
+        delta <- cbind(delta, tune.set[[l]]$delta)
         dev <- c(dev, tune.set[[l]]$q_loss)
       }
       ic <- GIC.tau - dev
@@ -186,7 +188,7 @@ melody.meta.summary <- function(Melody,
                           tune.type = tune.type)
     }
   }else if(tune.path == "gsection"){
-    ### Search best model by gsection
+    #=== Search best model by g-section ===#
     if(is.null(tune.size.range)){
       dims <- dim(Melody$lasso.mat$X.enlarge)
       s.1.lambda <- 1
@@ -221,11 +223,8 @@ melody.meta.summary <- function(Melody,
                                     tune.type = tune.type,
                                     tol = tol,
                                     verbose = verbose)
-      tmp.result <- tmp.subset$tmp.result
-      GIC.result <- tmp.subset$GIC.result
-      search.loc <- tmp.subset$search.loc
-      tune.set[[as.character(s.lambda)]] <- tmp.result
-      GIC.result <- GIC.cal(result = tmp.result, tune.type = tune.type)
+      tune.set[[as.character(s.lambda)]] <- tmp.subset$tmp.result
+      GIC.result <- GIC.cal(result = tmp.subset$tmp.result, tune.type = tune.type)
       GIC.tau <- c(GIC.tau, GIC.result)
       g.sequence <- c(g.sequence, s.lambda)
       g.id <- g.id + 1
@@ -248,64 +247,68 @@ melody.meta.summary <- function(Melody,
       }else if(s.right.GIC == min(s.all.GIC) & s.right.lambda - s.left.lambda <= 1 & s.2.lambda - s.right.lambda <= 1){
         min.result <- tune.set[[as.character(s.right.lambda)]]
         loops <- FALSE
+      }else{
+        if(min(s.all.GIC[1:2]) == min(s.all.GIC)){
+          #=== minimize GIC at s.1 or s.left ===#
+          s.2.lambda <- s.right.lambda
+          s.2.GIC <- s.right.GIC
+          s.right.lambda <- s.left.lambda
+          s.right.GIC <- s.left.GIC
+          s.left.lambda <- round(s.1.lambda * g.section + s.2.lambda * (1 - g.section))
+          tmp.subset <- search.subset.s(Melody = Melody,
+                                        L = L,
+                                        quantile_sm = quantile_sm,
+                                        s.size = s.left.lambda,
+                                        tmp.result = NULL,
+                                        search.loc = rep(-Inf, L),
+                                        GIC.result = Inf,
+                                        initial.range = 0.2,
+                                        tune.type = tune.type,
+                                        tol = tol,
+                                        verbose = verbose)
+          tmp.result <- tmp.subset$tmp.result
+          GIC.result <- tmp.subset$GIC.result
+          search.loc <- tmp.subset$search.loc
+          if(!as.character(s.left.lambda) %in% names(tune.set)){
+            tune.set[[as.character(s.left.lambda)]] <- tmp.result
+            s.left.GIC <- GIC.cal(result = tmp.result, tune.type = tune.type)
+            GIC.tau <- c(GIC.tau, s.left.GIC)
+            g.sequence <- c(g.sequence, s.left.lambda)
+          }
+        }else if(min(s.all.GIC[3:4]) == min(s.all.GIC)){
+          #=== minimize GIC at s.right or s.2 ===#
+          s.1.lambda <- s.left.lambda
+          s.1.GIC <- s.left.GIC
+          s.left.lambda <- s.right.lambda
+          s.left.GIC <- s.right.GIC
+          s.right.lambda <- round(s.1.lambda * (1 - g.section) + s.2.lambda * g.section)
+          tmp.subset <- search.subset.s(Melody = Melody,
+                                        L = L,
+                                        quantile_sm = quantile_sm,
+                                        s.size = s.right.lambda,
+                                        tmp.result = NULL,
+                                        search.loc = rep(-Inf, L),
+                                        GIC.result = Inf,
+                                        initial.range = 0.2,
+                                        tune.type = tune.type,
+                                        tol = tol,
+                                        verbose = verbose)
+          tmp.result <- tmp.subset$tmp.result
+          GIC.result <- tmp.subset$GIC.result
+          search.loc <- tmp.subset$search.loc
+          if(!as.character(s.right.lambda) %in% names(tune.set)){
+            tune.set[[as.character(s.right.lambda)]] <- tmp.result
+            s.right.GIC <- GIC.cal(result = tmp.result, tune.type = tune.type)
+            GIC.tau <- c(GIC.tau, s.right.GIC)
+            g.sequence <- c(g.sequence, s.right.lambda)
+          }
+        }
+        g.id <- g.id + 1
       }
-      if(min(s.all.GIC[1:2]) == min(s.all.GIC)){
-        ### minimize GIC at s.1 or s.left
-        s.2.lambda <- s.right.lambda
-        s.2.GIC <- s.right.GIC
-        s.right.lambda <- s.left.lambda
-        s.right.GIC <- s.left.GIC
-        s.left.lambda <- round(s.1.lambda * g.section + s.2.lambda * (1 - g.section))
-        GIC.result <- Inf
-        tmp.subset <- search.subset.s(Melody = Melody,
-                                      L = L,
-                                      quantile_sm = quantile_sm,
-                                      s.size = s.left.lambda,
-                                      tmp.result = NULL,
-                                      search.loc = rep(-Inf, L),
-                                      GIC.result = Inf,
-                                      initial.range = 0.2,
-                                      tune.type = tune.type,
-                                      tol = tol,
-                                      verbose = verbose)
-        tmp.result <- tmp.subset$tmp.result
-        GIC.result <- tmp.subset$GIC.result
-        search.loc <- tmp.subset$search.loc
-        tune.set[[as.character(s.left.lambda)]] <- tmp.result
-        s.left.GIC <- GIC.cal(result = tmp.result, tune.type = tune.type)
-        GIC.tau <- c(GIC.tau, s.left.GIC)
-        g.sequence <- c(g.sequence, s.left.lambda)
-      }else if(min(s.all.GIC[3:4]) == min(s.all.GIC)){
-        ### minimize GIC at s.right or s.2
-        s.1.lambda <- s.left.lambda
-        s.1.GIC <- s.left.GIC
-        s.left.lambda <- s.right.lambda
-        s.left.GIC <- s.right.GIC
-        s.right.lambda <- round(s.1.lambda * (1 - g.section) + s.2.lambda * g.section)
-        tmp.subset <- search.subset.s(Melody = Melody,
-                                      L = L,
-                                      quantile_sm = quantile_sm,
-                                      s.size = s.right.lambda,
-                                      tmp.result = NULL,
-                                      search.loc = rep(-Inf, L),
-                                      GIC.result = Inf,
-                                      initial.range = 0.2,
-                                      tune.type = tune.type,
-                                      tol = tol,
-                                      verbose = verbose)
-        tmp.result <- tmp.subset$tmp.result
-        GIC.result <- tmp.subset$GIC.result
-        search.loc <- tmp.subset$search.loc
-        tune.set[[as.character(s.right.lambda)]] <- tmp.result
-        s.right.GIC <- GIC.cal(result = tmp.result, tune.type = tune.type)
-        GIC.tau <- c(GIC.tau, s.right.GIC)
-        g.sequence <- c(g.sequence, s.right.lambda)
-      }
-      g.id <- g.id + 1
     }
     if(ouput.best.one){
       coef <- min.result$mu.fit
-      delta <- min.result$ref_est
+      delta <- min.result$delta
       names(delta) <- paste0("<",Melody$dat.inf$study.names,">_<" ,Melody$dat.inf$ref,">")
       dev <- min.result$q_loss
       ic <- min.result$GIC.result - dev
@@ -324,7 +327,7 @@ melody.meta.summary <- function(Melody,
       ic <- NULL
       for(l in 1:length(tune.set)){
         coef <- cbind(coef, tune.set[[l]]$mu.fit)
-        delta <- cbind(delta, tune.set[[l]]$ref_est)
+        delta <- cbind(delta, tune.set[[l]]$delta)
         dev <- c(dev, tune.set[[l]]$q_loss)
       }
       ic <- GIC.tau - dev
@@ -346,7 +349,7 @@ melody.meta.summary <- function(Melody,
     }else{
       min.id <- which.min(results.all$dev + results.all$ic)
       taxa_tab <- data.frame(taxa = names(which(results.all$coef[,min.id]!=0)),
-                             coef = as.numeric(results.all$coef[results.all$coef[,min.id]!=0]))
+                             coef = as.numeric(results.all$coef[results.all$coef[,min.id]!=0,min.id]))
     }
 
     ggp1 <- taxa_tab %>% arrange(coef) %>%
@@ -367,7 +370,6 @@ melody.meta.summary <- function(Melody,
       geom_hline(aes(yintercept = 0),colour="#990000", linetype="dashed")
 
     # plotting
-
     ggsave(filename = paste0(getwd(), "/miMeta.pdf"),
            plot = ggp1,
            width = 8,

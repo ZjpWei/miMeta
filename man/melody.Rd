@@ -19,7 +19,7 @@ melody(
   tune.path = c("gsection", "sequence"),
   tune.size.sequence = NULL,
   tune.size.range = NULL,
-  tune.type = c("HBIC", "BIC", "KBIC", "EBIC"),
+  tune.type = c("BIC", "HBIC", "KBIC", "EBIC"),
   tol = 0.001,
   parallel.core = NULL,
   ouput.best.one = TRUE,
@@ -71,8 +71,8 @@ Default is  1:round(K/2), where K is number of microbial features.}
 
 \item{tune.size.range}{An integer vector with two elements that define the range of the size. Default is c(1, K/2)}
 
-\item{tune.type}{Type of information criterion for choosing the optimal tunning parameters. Available options are "BIC", "kBIC", and "mBIC".
-Default is "HBIC".}
+\item{tune.type}{Type of information criterion for choosing the optimal tunning parameters. Available options are "BIC", "HBIC", "KBIC" and "EBIC".
+Default is "BIC".}
 
 \item{tol}{Converge tolerance for detecting the best model. Default is 1e-3.}
 

@@ -35,8 +35,8 @@
 #' @param tune.size.sequence An integer vector containing the subset sizes to be considered. Only used when tune.path="sequence".
 #' Default is  1:round(K/2), where K is number of microbial features.
 #' @param tune.size.range An integer vector with two elements that define the range of the size. Default is c(1, K/2)
-#' @param tune.type Type of information criterion for choosing the optimal tunning parameters. Available options are "BIC", "kBIC", and "mBIC".
-#' Default is "HBIC".
+#' @param tune.type Type of information criterion for choosing the optimal tunning parameters. Available options are "BIC", "HBIC", "KBIC" and "EBIC".
+#' Default is "BIC".
 #' @param tol Converge tolerance for detecting the best model. Default is 1e-3.
 #' @param parallel.core The number of cores to be concurrently used for generating summary statistics.
 #' It's an integer between 1 and cl - 1 (cl is the total core number). parallel.core = 1: no parallel. Default is cl - 1.
@@ -96,7 +96,6 @@
 #' }
 #'
 
-
 melody <- function(rel.abd,
                    sample.data,
                    sample.id,
@@ -111,18 +110,18 @@ melody <- function(rel.abd,
                    tune.path = c("gsection", "sequence"),
                    tune.size.sequence = NULL,
                    tune.size.range = NULL,
-                   tune.type = c("HBIC", "BIC", "KBIC", "EBIC"),
+                   tune.type = c("BIC", "HBIC", "KBIC", "EBIC"),
                    tol = 1e-3,
                    parallel.core = NULL,
                    ouput.best.one = TRUE,
                    verbose = FALSE
-                   ) {
+) {
 
   cov.type <- match.arg(cov.type)
   tune.path <- match.arg(tune.path)
   tune.type <- match.arg(tune.type)
 
-  ### Generate summary statistics
+  #=== Generate summary statistics ===#
   summary.stat.study <- melody.get.summary(rel.abd,
                                            sample.data,
                                            sample.id,
@@ -137,7 +136,7 @@ melody <- function(rel.abd,
                                            parallel.core,
                                            verbose)
 
-  ### Meta-analysis
+  # Meta-analysis
   Melody.model <- melody.meta.summary(Melody = summary.stat.study,
                                       tune.path,
                                       tune.size.sequence,
@@ -149,10 +148,3 @@ melody <- function(rel.abd,
 
   return(Melody.model)
 }
-
-
-
-
-
-
-
