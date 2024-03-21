@@ -1,126 +1,81 @@
 ## ----getPackage, echo=TRUE----------------------------------------------------
-if(!require("miMeta", quietly = TRUE)){
-  devtools::install_github("ZjpWei/miMeta")
-}
+# if(!require("miMeta", quietly = TRUE)){
+#   devtools::install_github("ZjpWei/miMeta")
+# }
 
-## ----load, echo=TRUE----------------------------------------------------------
+## ----load, echo=TRUE, message=FALSE, warning=FALSE----------------------------
 library("miMeta")
-library("DT")
-library("ggplot2")
 library("tidyverse")
 
 ## ----echo=TRUE----------------------------------------------------------------
-data("CRC_abd", "meta", package = "miMeta")
-table(meta[,c("Study", "Group")])
-CRC_abd <- CRC_abd[,meta$Sample_ID]
+data("CRC_data")
+CRC_abd <- CRC_data$CRC_abd
+CRC_meta <- CRC_data$CRC_meta
 
-## ----echo=TRUE, message=FALSE, warning=FALSE, fig.cap="a plot for microbial feature overlap among studies: this plot shows the number of features shared among studies. "----
-# Pick a reference taxa
-ref <- "Coprococcus catus [ref_mOTU_v2_4874]"
+## ----echo=TRUE, message=TRUE, warning=FALSE-----------------------------------
+# Prepare input data
+rel.abd <- list()
+covariate.interest <- list()
+for(d in c("FR-CRC", "DE-CRC")){
+  rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
+  disease <- as.numeric(CRC_meta$Group[CRC_meta$Study == d] == "CRC")
+  names(disease) <- CRC_meta$Sample_ID[CRC_meta$Study == d]
+  covariate.interest[[d]] <- data.frame(disease = disease)
+}
 
-# melody can analyze single study or multiple studies. 
-meta.result <- melody(rel.abd = CRC_abd,
-                      sample.data = meta,
-                      sample.id = "Sample_ID",
-                      study = "Study",
-                      disease = "Group",
-                      ref = ref,
-                      parallel.core = 1,
+refs <- c("Coprococcus catus [ref_mOTU_v2_4874]", "Coprococcus catus [ref_mOTU_v2_4874]")
+names(refs) <- c("FR-CRC", "DE-CRC")
+meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest, 
+                      ref = refs, 
                       verbose = TRUE)
 
-## ----echo=FALSE, fig.cap="a plot showing the absolute-abundance coefficient estimates of the selected microbial features in the best model under the best subset size."----
-taxa_tab <- data.frame(taxa = names(which(meta.result$coef!=0)),
-                       coef = as.numeric(meta.result$coef[meta.result$coef!=0]))
-
-taxa_tab %>% arrange(coef) %>% 
-  mutate(taxa = factor(taxa, levels = taxa)) %>% 
-  ggplot() + geom_point(aes(x= factor(taxa), y= coef)) + 
-  theme_classic() + coord_flip() + ylab("coef") + 
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_text(size = 8),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 10),
-        panel.border = element_rect(colour = "black", fill=NA),
-        legend.position = "right") +
-  scale_x_discrete(position='bottom') +
-  scale_fill_manual(values=c('lightgrey', 'darkgrey'), guide="none") +
-  geom_hline(aes(yintercept = 0),colour="#990000", linetype="dashed")
-
+## -----------------------------------------------------------------------------
+head(data.frame(coef = meta.result$disease$coef), n = 20)
 
 ## ----echo=TRUE, message=FALSE, warning=FALSE----------------------------------
-# Geneeate summary statistisc for each study
-meta_FR <- meta[meta$Study == "FR-CRC",]
-summary.FR <- melody.get.summary(rel.abd = CRC_abd[,meta_FR$Sample_ID],
-                                 sample.data = meta_FR,
-                                 sample.id = "Sample_ID",
-                                 study = "Study",
-                                 disease = "Group",
-                                 ref = ref)
+# Generate summary statistics for each study
+null.obj.FR <- melody.null.model(rel.abd = rel.abd["FR-CRC"], ref = "Coprococcus catus [ref_mOTU_v2_4874]")
+summary.stats.FR <- melody.get.summary(null.obj = null.obj.FR,
+                                       covariate.interest = covariate.interest["FR-CRC"])
 
-meta_DE <- meta[meta$Study == "DE-CRC",]
-summary.DE <- melody.get.summary(rel.abd = CRC_abd[,meta_DE$Sample_ID],
-                                 sample.data = meta_DE,
-                                 sample.id = "Sample_ID",
-                                 study = "Study",
-                                 disease = "Group",
-                                 ref = ref)
-
-meta_CN <- meta[meta$Study == "CN-CRC",]
-summary.CN <- melody.get.summary(rel.abd = CRC_abd[,meta_CN$Sample_ID],
-                                 sample.data = meta_CN,
-                                 sample.id = "Sample_ID",
-                                 study = "Study",
-                                 disease = "Group",
-                                 ref = ref)
-
-meta_US <- meta[meta$Study == "US-CRC",]
-summary.US <- melody.get.summary(rel.abd = CRC_abd[,meta_US$Sample_ID],
-                                 sample.data = meta_US,
-                                 sample.id = "Sample_ID",
-                                 study = "Study",
-                                 disease = "Group",
-                                 ref = ref)
-
-meta_AT <- meta[meta$Study == "AT-CRC",]
-summary.AT <- melody.get.summary(rel.abd = CRC_abd[,meta_AT$Sample_ID],
-                                 sample.data = meta_AT,
-                                 sample.id = "Sample_ID",
-                                 study = "Study",
-                                 disease = "Group",
-                                 ref = ref)
+null.obj.DE <- melody.null.model(rel.abd = rel.abd["DE-CRC"], ref = "Coprococcus catus [ref_mOTU_v2_4874]")
+summary.stats.DE <- melody.get.summary(null.obj = null.obj.DE,
+                                       covariate.interest = covariate.interest["DE-CRC"])
 
 ## ----echo=TRUE, message=FALSE, warning=FALSE----------------------------------
-# Merge summary statistics
-summary.merge <- melody.merge.summary(list(summary.FR, summary.DE, summary.CN, summary.US, summary.AT))
+# Concatenate summary statistics
+summary.stats.all <- c(summary.stats.FR, summary.stats.DE)
 
 ## ----echo=TRUE----------------------------------------------------------------
-# Meta-analysis for merged summary statistics
-meta.result.merge <- melody.meta.summary(Melody = summary.merge, verbose = TRUE)
+# Meta-analysis to harmonize and combine summary statistics across studies
+meta.result.2 <- melody.meta.summary(summary.stats = summary.stats.all, verbose = TRUE)
 
-## ----echo=FALSE, fig.cap="a plot showing the absolute-abundance coefficient estimates of the selected microbial features in the best model under the best subset size by using merged summary statistics."----
-taxa_tab <- data.frame(taxa = names(which(meta.result$coef!=0)),
-                       coef = as.numeric(meta.result$coef[meta.result$coef!=0]))
+## ----echo=TRUE, message=FALSE, warning=FALSE----------------------------------
+# Load metabolome data: 
+# You may see the following website on how to directly load data from 
+# github into R https://github.com/ZjpWei/Melody/data/
 
-taxa_tab %>% arrange(coef) %>% 
-  mutate(taxa = factor(taxa, levels = taxa)) %>% 
-  ggplot() + geom_point(aes(x= factor(taxa), y= coef)) + 
-  theme_classic() + coord_flip() + ylab("coef") + 
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_text(size = 8),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 10),
-        panel.border = element_rect(colour = "black", fill=NA),
-        legend.position = "right") +
-  scale_x_discrete(position='bottom') +
-  scale_fill_manual(values=c('lightgrey', 'darkgrey'), guide="none") +
-  geom_hline(aes(yintercept = 0),colour="#990000", linetype="dashed")
+load("~/Documents/Researches/Package_build/miMeta/metabolome_data.Rdata")
+otu_data_lst <- metabolome_data$otu_data_lst
+cmpd_data_lst <- metabolome_data$cmpd_data_lst
+covariates_adjust_lst <- metabolome_data$covariates_adjust_lst
+cluster_data_lst <- metabolome_data$cluster_data_lst
 
+# get null model
+null.obj <- melody.null.model(rel.abd = otu_data_lst, covariate.adjust = covariates_adjust_lst)
+
+# Get summary statistics
+summary.stats <- melody.get.summary(null.obj = null.obj, covariate.interest = cmpd_data_lst, cluster = cluster_data_lst)
+
+# Meta-analysis
+meta.scan.result <- melody.meta.summary(summary.stats = summary.stats, verbose = TRUE)
+
+## ----echo=TRUE----------------------------------------------------------------
+selected.num <- sort(unlist(lapply(meta.scan.result, function(d){sum(d$coef!=0)})), decreasing = TRUE)
+top.cov.name <- names(selected.num)[1:min(5, length(selected.num))]
+coef_mat <- sapply(meta.scan.result[top.cov.name], function(d){d$coef}, simplify = TRUE)
+rownames(coef_mat) <- gsub(".*;g__","g__",rownames(coef_mat))
+head(coef_mat, n = 20)
 
 ## -----------------------------------------------------------------------------
 sessionInfo()

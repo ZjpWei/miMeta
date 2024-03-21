@@ -2,9 +2,8 @@
 
 export(melody)
 export(melody.get.summary)
-export(melody.merge.summary)
 export(melody.meta.summary)
-import(R6)
+export(melody.null.model)
 import(UpSetR)
 import(abess)
 import(brglm2)

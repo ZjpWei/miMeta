@@ -2,133 +2,128 @@
 % Please edit documentation in R/melody.R
 \name{melody}
 \alias{melody}
-\title{meta-analysis for selecting microbial signatures}
+\title{Meta-analysis for selecting microbial signatures associated with covariate of interests.}
 \usage{
 melody(
   rel.abd,
-  sample.data,
-  sample.id,
-  study,
-  disease,
-  covariates = NULL,
+  covariate.interest,
+  covariate.adjust = NULL,
   cluster = NULL,
   depth.filter = 0,
-  prev.filter = 0,
+  prev.filter = 0.1,
   ref = NULL,
-  cov.type = c("diag", "ridge"),
   tune.path = c("gsection", "sequence"),
   tune.size.sequence = NULL,
   tune.size.range = NULL,
   tune.type = c("BIC", "HBIC", "KBIC", "EBIC"),
   tol = 0.001,
+  NMAX = 20,
   parallel.core = NULL,
-  ouput.best.one = TRUE,
+  output.best.one = TRUE,
   verbose = FALSE
 )
 }
 \arguments{
-\item{rel.abd}{Microbial feature-by-sample matrix of relative abundance counts. Must have microbial feature IDs
-as row names and sample IDs as column names.}
+\item{rel.abd}{A list of matrices for relative abundance counts. Each element of the list pertains to one study,
+and the name of each element must be the study ID. Each matrix must have sample IDs as row names and microbial feature IDs as column names.
+No missing value is allowed.}
 
-\item{sample.data}{A dataframe. data frame of sample-level variables. Columns must include variables for study, disease,
-covariates (if specified), and cluster (if specified). The row names must agree with column names in \code{rel.abd} matrix.}
+\item{covariate.interest}{A list of matrices for single or multiple covariates of interest. Each element of the list pertains to one study, and the name of each element must be
+the study ID. In a matrix of a given study, each row is a sample, and each column is a covariate of interest and can only be a numeric vector.
+The set of covariates can be different among studies. In a given study, the order of samples should be matched with the order in "rel.abd". No missing value is allowed.}
 
-\item{sample.id}{Name of the variable that defines the sample's ID in \code{sample.data}.}
+\item{covariate.adjust}{A list of data frames for covariates that will be adjusted for in the model. Each element of the list pertains to one study,
+and the name of each element must be the study ID. In a data frame of a given study, each row is a sample, and each column is a covariate to be adjusted and can only be a factor or numeric vector.
+The set of covariates can be different among studies. In a given study, the order of samples should be matched with the order in "rel.abd". No missing value is allowed.
+Default is NULL (not adjusting for any covariates)}
 
-\item{study}{Name of the variable that defines different studies in \code{sample.data}.}
+\item{cluster}{A list of vectors of variable that define the sample cluster for studies with correlated samples. Each element of the list pertains to one study with correlated samples,
+and the name of each element must be the study ID. The order of samples should be matched with the order in "rel.abd" in the corresponding study.
+For example, the values of this variable are subject IDs if each subject has multiple correlated samples
+(e.g., measured in a longitudinal study). Default is NULL (all samples in all studies are independent, so no need to provide this input.).}
 
-\item{disease}{Name of the variable that defines the disease to identify microbial signature.}
+\item{depth.filter}{A cutoff value to remove samples with sequencing depth less than or equal to the cutoff. Default is 0.}
 
-\item{covariates}{A vector of names of the variables to adjust for in the microbiome-disease association model. Default is NULL.}
+\item{prev.filter}{A cutoff value remove microbial features with prevalence (proportion of nonzero observations)
+less than or equal to the cutoff. This cutoff is applied to each study. So, a feature could be removed in a subset of the studies. The cutoff value must be in the range of 0-1. Default is 0.1.}
 
-\item{cluster}{Name of the variable that define the sample clusters. For example, the values of this variable are subject IDs
-if each subject has multiple correlated samples (e.g., measured in a longitudinal study). For a study only contains independent samples,
-the value of this variable is unique for each sample (can set to sample ID) or set to NA for that study. Default is NULL
-(all samples in all studies are independent).}
+\item{ref}{A feature ID or a vector of feature IDs. If a feature ID is provided, this microbial feature will be used as the reference in all studies when generating summary statistics.
+If a vector of feature IDs is provided, each feature in the vector will be the reference for a study. Therefore, the length of the vector should be equal to the number of studies and have study IDs as names.
+Default is NULL (the function will automatically pick reference for each study).}
 
-\item{depth.filter}{A cutoff value (>= 0) to remove samples with sequencing depth less than or equal to the cutoff. Default is 0 (not removing any samples).}
-
-\item{prev.filter}{A cutoff value to remove microbial features with prevalence (proportion of nonzero observations in rel.abd matrix)
-less than or equal to the cutoff. The cutoff value must be in the range of 0-1. Default is 0 (only removing microbial features that
-have zero in all samples).}
-
-\item{ref}{A vector with length L (Study number L>=1) or a character or NULL. The name of reference taxa/features in each study when
-generating summary statistics by multinomial logistic regression. If ref is a character, all studies will use ref as reference taxon;
-if ref is a vector with length L, the study l will use \code{ref_l} as reference taxon; if ref is NULL, melody will pick reference
-taxa automatically (Check argument ref.iden to see how melody picks reference taxa).Default is NULL.}
-
-\item{cov.type}{The type of covariate matrix of summary statistics in each study. Options include "ridge", "diag". If cov.type is "ridge",
-melody will do ridge regularization to decide full covriate matrix of summary statistics, if cov.type is "diag", melody will use the diagonal covariate
-matrix in summary statistics. Default is "diag".}
-
-\item{tune.path}{Method to choose the optimal subset size in the best subset selection. If tune.path="sequence",
-we solve the best subset selection problem for each size in tune.size.sequence. If tune.path="gsection",
+\item{tune.path}{Method to choose the optimal subset size in the best subset selection. If tune.path is "sequence",
+we solve the best subset selection problem for each size in "tune size sequence". If tune.path is "gsection",
 we solve the best subset selection problem with the size ranged in tune.size.range, where the considered size
 sequence within the range is determined by golden section search. Default is "gsection".}
 
-\item{tune.size.sequence}{An integer vector containing the subset sizes to be considered. Only used when tune.path="sequence".
-Default is  1:round(K/2), where K is number of microbial features.}
+\item{tune.size.sequence}{An integer vector containing the subset sizes to be considered. Only used when tune.path is "sequence".
+Default is 0:round(K/2), where K is number of microbial features.}
 
-\item{tune.size.range}{An integer vector with two elements that define the range of the size. Default is c(1, K/2)}
+\item{tune.size.range}{An integer vector with two elements that define the range of the size. Default is c(0, K/2)}
 
-\item{tune.type}{Type of information criterion for choosing the optimal tunning parameters. Available options are "BIC", "HBIC", "KBIC" and "EBIC".
+\item{tune.type}{Type of information criterion for choosing the best subset size. Available options are "BIC", "HBIC", "KBIC" and "EBIC".
 Default is "BIC".}
 
-\item{tol}{Converge tolerance for detecting the best model. Default is 1e-3.}
+\item{tol}{Convergence tolerance in the search for the best delta tuning parameters. Default is 1e-3.}
+
+\item{NMAX}{The maximum number of iterations in the search for the best delta tuning parameters. Default is 20.}
 
 \item{parallel.core}{The number of cores to be concurrently used for generating summary statistics.
-It's an integer between 1 and cl - 1 (cl is the total core number). parallel.core = 1: no parallel. Default is cl - 1.}
+It's an integer between 1 and cl - 1 (cl is the total core number). Default is cl - 1.}
 
 \item{ouput.best.one}{Whether only output the best model. Default is TRUE.}
 
-\item{verbose:}{whether to print verbose information. Default is FALSE. (see details in Value)}
+\item{verbose:}{Whether to print verbose information. Default is FALSE. (see details in Value)}
 }
 \value{
-If output.best.one=TRUE (default), output a list with the following components about the single best model over the subset sizes considered.
-\item{coef}{A coefficient vector that contains the absolute-abundance coefficient estimates for the microbial features under the best subset size. The vector names are microbial features IDs.}
-\item{delta}{A vector that contains the best values of the delta tunning parameters under the best subset size. The vector names are in the format "<study ID>_<reference microbial feature ID>"}
+Output a list with each component for a covariate of interest.
+
+If output.best.one=TRUE (default), the component includes the following elements to deliver the meta-analysis results under the best model over the subset sizes considered.
+\item{coef}{A coefficient vector that contains the meta association coefficient estimate (at the absolute-abundance level) under the best subset size. The vector names are microbial features IDs. The microbial features with nonzero coefficients are the selected signatures.}
+\item{delta}{A vector that contains the best values of the delta tuning parameters under the best subset size. The vector names are in the format "<study ID>_<reference microbial feature ID>"}
 \item{dev}{The value of the deviance for the best subset size.}
-\item{ic}{The value of the information criterion (specified in tune.type) for the best subset size.}
-\item{best.size}{The best subset size.}
+\item{ic}{The value of the information criterion (the type of information criterion is specified in tune.type) for the best subset size.}
 
-If ouput.best.one=FALSE, output a list object with the following components for multiple best subset models, each of which is under a specific subset size considered (depends on tune.path, see details in Arguments).
-\item{coef}{A coefficient matrix with each column contains the absolute-abundance coefficient estimates for the microbial features under a specific subset size. The row names are microbial features IDs and the column names are the subset sizes considered.}
-\item{delta}{A matrix with each column contains the best values of the delta tunning parameters under a specific subset size. The row names are in the format "<study ID>_<reference microbial feature ID>" and the column names are the subset sizes considered.}
-\item{dev}{A vector contains the values of the deviance for the subset sizes considered (shown as vector names).}
-\item{ic}{A vector contains the values of the information criterion (specified in tune.type) for the subset sizes considered (shown as vector names).}
-\item{best.size}{The best subset size.}
+If output.best.one=FALSE, the component includes the following elements to deliver the meta-analysis results under all models over the subset sizes considered. (depends on tune.path, see details in Arguments)
+\item{coef}{A coefficient matrix with each column contains the  meta association coefficient estimate (at the absolute-abundance level) under a subset size. The row names are microbial features IDs and the column names are the subset sizes considered.}
+\item{delta}{A matrix with each column contains the best values of the delta tuning parameters under a subset size. The row names are in the format "<study ID>_<reference microbial feature ID>" and the column names are the subset sizes considered.}
+\item{dev}{A vector contains the values of the deviance for the subset sizes considered.}
+\item{ic}{A vector contains the values of the information criterion (the type of information criterion is specified in tune.type) for the subset sizes considered.}
 
-If verbose=TRUE, Generate two plots and print information about the progress of meta-analysis.
-plot for microbial feature overlap among studies: this plot shows the number of features shared among studies.
-a plot showing the absolute-abundance coefficient estimates of the selected microbial features in the best model under the best subset size.
+If verbose=TRUE, print out information about the progress of the meta-analysis. In addition,
+it will generate an intersection plot showing the number of microbial features shared among studies and scatter
+plots for the meta-coefficient estimates for the top 5 covariates of interest associated with most microbial features.
 }
 \description{
 Melody is a meta-analysis method designed to account for the unique features of compositional microbiome data
-in selecting microbial signatrues.
+in selecting microbial signatures.
 }
 \details{
-Melody first generates summary statistics (microbiome-disease association coefficient estimates and their variances) for
-individual studies. Melody then combines the summary statistics across studies to select disease-associated microbial
-signatures based on the average absolute-abundance association coefficients inferred from the summary statistics.
+Melody first generates summary statistics (microbiome association coefficient estimates and their variances) for
+individual studies. Melody then combines the summary statistics across studies to select microbial signatures.
 In particular, the selection of signature is operated through a best-subset selection.
-There are two sets of tunning parameters in the best subset selection including the subset size
+There are two sets of tuning parameters in the best subset selection including the subset size
 (i.e. the number of microbial features selected) and delta's which are introduced to recover the
-absolute-abundance coefficients from the relative-abundance coefficients.
+absolute-abundance coefficients from the relative-abundance coefficients. (details in reference Wei et al.)
 }
 \examples{
 \donttest{
 library("miMeta")
-data("CRC_abd")
-data("meta")
+data("CRC_data")
+CRC_abd <- CRC_data$CRC_abd
+CRC_meta <- CRC_data$CRC_meta
 
-meta_FR <- meta[meta$Study == "FR-CRC",]
-CRC_abd_FR <- CRC_abd[,meta_FR$Sample_ID]
+########## Generate summary statistics ##########
+rel.abd <- list()
+covariate.interest <- list()
+for(d in unique(CRC_meta$Study)){
+  rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
+  disease <- as.numeric(CRC_meta$Group[CRC_meta$Study == d] == "CRC")
+  names(disease) <- CRC_meta$Sample_ID[CRC_meta$Study == d]
+  covariate.interest[[d]] <- data.frame(disease = disease)
+}
 
-Melody.model <- melody(rel.abd = CRC_abd_FR,
-                       sample.data = meta_FR,
-                       sample.id = "Sample_ID",
-                       study = "Study",
-                       disease = "Group")
+meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest)
 }
 
 }
@@ -138,7 +133,7 @@ Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in 
 \seealso{
 \code{\link{melody.get.summary}},
 \code{\link{melody.meta.summary}},
-\code{\link{melody.merge.summary}},
+\code{\link{melody.merge.summary}}
 }
 \author{
 Zhoujingpeng Wei, Guanhua Chen, Zheng-Zheng Tang

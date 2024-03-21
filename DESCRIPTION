@@ -5,14 +5,13 @@ Version: 0.1.0
 Author: Zhoujingpeng Wei, Guanhua Chen, Zheng-Zheng Tang
 Maintainer: Zhoujingpeng <zwei74@wisc.edu>
 Description: This R package implements the new methods for meta-analysis of microbiome association studies that respect the unique features of microbiome data such as compositionality. 
-Data: 2023-09-23
+Data: 2024-03-15
 Reference: Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis. Submitted.
 License: GPL (>= 3) | file LICENSE
 Imports:
   MASS,
   brglm2,
   abess,
-  R6,
   UpSetR,
   dplyr,
   ggplot2,

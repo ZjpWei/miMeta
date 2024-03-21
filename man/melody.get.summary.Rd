@@ -2,58 +2,62 @@
 % Please edit documentation in R/melody.get.summary.R
 \name{melody.get.summary}
 \alias{melody.get.summary}
-\title{Generate Melody summary statistics for one or multiple studies.}
+\title{Generate Melody summary statistics for individual studies.}
 \usage{
 melody.get.summary(
-  rel.abd,
-  sample.data,
-  sample.id,
-  study,
-  disease,
-  covariates = NULL,
+  null.obj,
+  covariate.interest,
   cluster = NULL,
-  depth.filter = 0,
-  prev.filter = 0,
-  ref = NULL,
-  cov.type = c("diag", "ridge"),
   parallel.core = NULL,
   verbose = FALSE
 )
 }
 \arguments{
-\item{...}{Same arguments as the function melody}
+\item{null.obj}{The output of function "melody.null.model".}
+
+\item{...}{See function melody. In covariate.interest and cluster,
+the order of samples should be matched with the order in rel.abd used in the "melody.null.model" function.}
 }
 \value{
-A Melody class.
-\item{summary.stat.study}{A list includes summary statistics for each study.}
-\item{dat.inf}{A list includes study number; reference feature for each study; feature number and feature names.}
-\item{taxa.set}{A list includes the which features are included or not in each study.}
+Output a list with each component for a study. The component includes the following elements.
+\item{ref}{Reference feature ID for the study.}
+\item{est}{A matrix contains the relative-abundance association coefficient estimates for the study. The row names are microbial feature IDs
+and the column names are the covariates of interest IDs.}
+\item{var}{A matrix contains the variances of the relative-abundance association coefficient estimates for the study.
+The row names are microbial feature IDs
+and the column names are the covariates of interest IDs.}
+\item{n}{Sample size for the study.}
 }
 \description{
-The melody.get.summary, melody.merge.summary, and melody.meta.summary are three functions that represent individual components in the melody pipeline.
-The function melody.get.summary takes individual-level data from one or multiple studies and outputs summary statistics for the studies in a Melody object.
-The output can be directly used by the functions melody.merge.summary and melody.meta.summary.
+This function directly takes the output object from the "melody.null.model" function and
+constructs summary statistics for covariates of interest in each study.
+The output can be directly used by the function "melody.meta.summary" to perform meta-analysis.
 }
 \examples{
 \donttest{
 library("miMeta")
-data("CRC_abd")
-data("meta")
+data("CRC_data")
+CRC_abd <- CRC_data$CRC_abd
+CRC_meta <- CRC_data$CRC_meta
 
-########## Generate summary statistics for study FR ##########
-meta_FR <- meta[meta$Study == "FR-CRC",]
-CRC_abd_FR <- CRC_abd[,meta_FR$Sample_ID]
-
-sumstats <- melody.get.summary(rel.abd = CRC_abd_FR,
-                               sample.data = meta_FR,
-                               sample.id = "Sample_ID",
-                               study = "Study",
-                               disease = "Group",
-                               verbose = TRUE)
+########## Generate summary statistics ##########
+rel.abd <- list()
+covariate.interest <- list()
+for(d in unique(CRC_meta$Study)){
+  rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
+  disease <- as.numeric(CRC_meta$Group[CRC_meta$Study == d] == "CRC")
+  names(disease) <- CRC_meta$Sample_ID[CRC_meta$Study == d]
+  covariate.interest[[d]] <- data.frame(disease = disease)
 }
+
+ null.obj <- melody.null.model(rel.abd = rel.abd)
+
+ summary.stats <- melody.get.summary(null.obj = null.obj, covariate.interest = covariate.interest)
+}
+
 }
 \seealso{
-\code{\link{melody}},
+\code{\link{melody.null.model}},
 \code{\link{melody.meta.summary}},
-\code{\link{melody.merge.summary}}
+\code{\link{melody}}
 }

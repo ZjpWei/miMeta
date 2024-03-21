@@ -5,66 +5,57 @@
 \title{Meta-analyze summary statistics across studies}
 \usage{
 melody.meta.summary(
-  Melody,
+  summary.stats,
   tune.path = c("gsection", "sequence"),
   tune.size.sequence = NULL,
   tune.size.range = NULL,
   tune.type = c("BIC", "HBIC", "KBIC", "EBIC"),
-  ouput.best.one = TRUE,
+  output.best.one = TRUE,
   tol = 0.001,
+  NMAX = 20,
   verbose = FALSE
 )
 }
 \arguments{
-\item{Melody}{Melody object.}
+\item{summary.stats}{The output of function "melody.get.summary".}
 
-\item{...}{Same arguments as the function melody}
+\item{...}{See function melody.}
 }
 \value{
-Same output as the function melody
+Same output as the function "melody".
 }
 \description{
-This function takes a Melody object that contains summary statistics of all studies participating the
-meta-analysis, then combines these summary statistics to select microbial signatures (see the Description of the function melody)
+This function directly takes the summary statistics output from the "melody.get.summary"
+function and combines the summary statistics across studies for selecting microbial signatures associated with each covariate of interest.
 }
 \examples{
 \donttest{
+library("miMeta")
+data("CRC_data")
+CRC_abd <- CRC_data$CRC_abd
+CRC_meta <- CRC_data$CRC_meta
 
-data("CRC_abd")
-data("meta")
+########## Generate summary statistics ##########
+rel.abd <- list()
+covariate.interest <- list()
+for(d in unique(CRC_meta$Study)){
+  rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
+  disease <- as.numeric(CRC_meta$Group[CRC_meta$Study == d] == "CRC")
+  names(disease) <- CRC_meta$Sample_ID[CRC_meta$Study == d]
+  covariate.interest[[d]] <- data.frame(disease = disease)
+}
 
-########## Generate summary statistics for study FR ##########
-meta_FR <- meta[meta$Study == "FR-CRC",]
-CRC_abd_FR <- CRC_abd[,meta_FR$Sample_ID]
+null.obj <- melody.null.model(rel.abd = rel.abd)
 
-sumstats_FR <- melody.get.summary(rel.abd = CRC_abd_FR,
-                                 sample.data = meta_FR,
-                                 sample.id = "Sample_ID",
-                                 study = "Study",
-                                 disease = "Group",
-                                 verbose = TRUE)
-
-########## Generate summary statistics for study DE ##########
-meta_DE <- meta[meta$Study == "DE-CRC",]
-CRC_abd_DE <- CRC_abd[,meta_DE$Sample_ID]
-
-sumstats_DE <- melody.get.summary(rel.abd = CRC_abd_DE,
-                                  sample.data = meta_DE,
-                                  sample.id = "Sample_ID",
-                                  study = "Study",
-                                  disease = "Group",
-                                  verbose = TRUE)
-
-########## Merge summary statistics ##########
-sumstats_merge <- melody.merge.summary(list(sumstats_FR, sumstats_DE))
+summary.stats <- melody.get.summary(null.obj = null.obj, covariate.interest = covariate.interest)
 
 ########## Meta-analysis ##########
-Melody.model <- melody.meta.summary(Melody = sumstats_merge)
+meta.result <- melody.meta.summary(summary.stats = summary.stats)
 }
 
 }
 \seealso{
-\code{\link{melody}},
+\code{\link{melody.null.model}},
 \code{\link{melody.get.summary}},
-\code{\link{melody.merge.summary}}
+\code{\link{melody}}
 }

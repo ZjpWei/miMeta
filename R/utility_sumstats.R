@@ -5,152 +5,309 @@
 
 ######## Utility functions for generating summary statistics ########
 ## This function summarizes the summary statistics
-Get_summary = function(Melody,
-                       G = 5,
-                       shrehold = 1e-2,
-                       cov.type = c("diag", "ridge"),
-                       parallel.core = NULL,
-                       verbose = FALSE){
+Get_gamma <- function(summary.stat.null,
+                      Sample.info,
+                      SUB.id){
 
-  cov.type <- match.arg(cov.type)
-  L <- Melody$dat.inf$L
-  K <- Melody$dat.inf$K
-
-  #================ Setup parallel jobs =================#
-  cores <- detectCores()
-  if(is.null(parallel.core)){
-    parallel.core <- cores[1]-1
-  }else{
-    if(parallel.core >= cores){
-      warning("The number of cores excceed the capacity.\n")
-      parallel.core <- cores[1]-1
+  study.ID <- names(summary.stat.null)
+  inv_gamma <- list()
+  for(d in study.ID){
+    inv.gamma.lst <- list()
+    sample.lst <- Sample.info[[d]]$rm.sample.idx
+    for(l in 1:length(sample.lst)){
+      rm.sample.id <- sample.lst[[l]]
+      if(length(rm.sample.id) == 0){
+        pp_mat <- summary.stat.null[[d]]$p
+        s.i.mat <- summary.stat.null[[d]]$res
+        X.sub <- summary.stat.null[[d]]$X
+        N <- summary.stat.null[[d]]$N
+        SUBid <- as.character(SUB.id[[d]])
+      }else{
+        pp_mat <- summary.stat.null[[d]]$p[-rm.sample.id,]
+        s.i.mat <- summary.stat.null[[d]]$res[-rm.sample.id,]
+        X.sub <- summary.stat.null[[d]]$X[-rm.sample.id,]
+        N <- summary.stat.null[[d]]$N[-rm.sample.id]
+        SUBid <- as.character(SUB.id[[d]])[-rm.sample.id]
+      }
+      K <- ncol(s.i.mat) + 1
+      V.i.lst <- list()
+      for(i in 1:length(N)){
+        pp <- pp_mat[i,]
+        mu_hat <- pp * N[i]
+        if(K == 2){
+          V.i.lst[[i]] <- N[i] * (pp - pp * t(pp))
+        }else{
+          V.i.lst[[i]] <- N[i] * (diag(pp) - pp %*% t(pp))
+        }
+      }
+      X.name <- colnames(X.sub)
+      name.cov <- paste0(colnames(X.sub), ":", as.character(sort(rep(1:ncol(s.i.mat),ncol(X.sub)))))
+      uniq.SUBid <- unique(SUBid)
+      nn <- length(uniq.SUBid)
+      s.i.lst <- NULL
+      A <- 0
+      for(ll in 1:nn){
+        s.i.SUB <- 0
+        for(i in which(uniq.SUBid[ll] == SUBid)){
+          A <- A + kronecker(V.i.lst[[i]], X.sub[i,] %*% t(X.sub[i,]))
+        }
+      }
+      colnames(A) <- name.cov
+      rownames(A) <- name.cov
+      beta.name <- paste0(X.name[length(X.name)],":", as.character(1:(K-1)))
+      gamma.name <- setdiff(colnames(A), beta.name)
+      inv.gamma.lst[[l]] <- solve(A[gamma.name, gamma.name])
     }
-    if(parallel.core <= 0 | as.integer(parallel.core) != parallel.core){
-      stop("The number of cores must be a positive interger.\n")
-    }
+    inv_gamma[[d]] <- inv.gamma.lst
   }
-  cl <- makeCluster(parallel.core[1])
-  registerDoParallel(cl)
-  summary.stat.study <- foreach(l = 1:L, .packages = "brglm2") %dopar% {
-    data.beta <- Melody$reg.fit[[l]]$data.beta
-    tmp <- Melody$reg.fit[[l]]$tmp
-    ref <- Melody$reg.fit[[l]]$ref
-    taxa.vec <- Melody$reg.fit[[l]]$taxa.set
-    summary.stats <- get_ridge_sumstat(data.beta = data.beta,
-                                       summarys = tmp,
-                                       G = G, shrehold = shrehold,
-                                       cov.type = cov.type,
-                                       verbose = verbose)
-
-    tmp.l.taxa.name <- names(taxa.vec)[taxa.vec]
-    names(summary.stats$est) <- tmp.l.taxa.name
-    rownames(summary.stats$cov) <- tmp.l.taxa.name
-    colnames(summary.stats$cov) <- tmp.l.taxa.name
-    summary.stat.swd = list(est=summary.stats$est,
-                            cov=summary.stats$cov,
-                            n = summary.stats$n,
-                            ref = ref,
-                            idx.rev = Melody$reg.fit[[l]]$idx.rev,
-                            para.id = l)
-    #=== output ===#
-    summary.stat.swd
-  }
-  #=== stop cluster ===#
-  stopCluster(cl)
-
-  #=== reorder output ===#
-  taxa.set <- list()
-  order.vec <- c()
-  for(l in 1:L){
-    order.vec <- c(order.vec, summary.stat.study[[l]]$para.id)
-    summary.stat.study[[l]]$para.id <- NULL
-    taxa.set[[l]] <- Melody$reg.fit[[l]]$taxa.set
-  }
-  summary.stat.study <- summary.stat.study[order(order.vec)]
-  Melody$summary.stat.study <- summary.stat.study
-  Melody$taxa.set <- taxa.set
-  return(Melody)
+  return(inv_gamma)
 }
 
-reg.fit = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, parallel.core = NULL, verbose = FALSE){
+Get_summary <- function(summary.stat.null,
+                        covariate.interest,
+                        SUB.id,
+                        inv_gamma,
+                        Sample.info,
+                        cov.type,
+                        G,
+                        shrehold,
+                        verbose){
 
-  dat <- Melody$dat
-  L <- Melody$dat.inf$L
-  K <- Melody$dat.inf$K
-  study.names <- Melody$dat.inf$study.names
+  #=== Cluster samples from same subject ===#
+  study.ID <- names(summary.stat.null)
+  summary.stat.study <- list()
+  for(d in study.ID){
+    cov.int.lst <- Sample.info[[d]]$rm.sample.cov
+    cov.int.id <- Sample.info[[d]]$rm.sample.idx
+    cov.int.nm <- colnames(covariate.interest[[d]])
+    feat.id <- colnames(summary.stat.null[[d]]$p)
+    est.mat <- matrix(NA, nrow = length(feat.id), ncol = length(cov.int.nm),
+                      dimnames = list(feat.id, cov.int.nm))
+    cov.mat <- matrix(NA, nrow = length(feat.id), ncol = length(cov.int.nm),
+                      dimnames = list(feat.id, cov.int.nm))
+    # n.vec <- NULL
+    for(cov.name in cov.int.nm){
+      if(verbose){
+        message("++ Construct summary statistics for study ", d, " and covariate of interest ", cov.name, ". ++")
+      }
+      l <- which(unlist(lapply(cov.int.lst, function(r){cov.name %in% r})))
+      rm.sample.id <- cov.int.id[[l]]
+      if(length(rm.sample.id) == 0){
+        pp_mat <- summary.stat.null[[d]]$p
+        s.i.mat <- summary.stat.null[[d]]$res
+        X.sub <- summary.stat.null[[d]]$X
+        N <- summary.stat.null[[d]]$N
+        SUBid <- as.character(SUB.id[[d]])
+      }else{
+        pp_mat <- summary.stat.null[[d]]$p[-rm.sample.id,]
+        s.i.mat <- summary.stat.null[[d]]$res[-rm.sample.id,]
+        X.sub <- summary.stat.null[[d]]$X[-rm.sample.id,]
+        N <- summary.stat.null[[d]]$N[-rm.sample.id]
+        SUBid <- as.character(SUB.id[[d]])[-rm.sample.id]
+      }
+      K <- ncol(s.i.mat) + 1
+      V.i.lst <- list()
+      for(i in 1:length(N)){
+        pp <- pp_mat[i,]
+        mu_hat <- pp * N[i]
+        if(K == 2){
+          V.i.lst[[i]] <- N[i] * (pp - pp * t(pp))
+        }else{
+          V.i.lst[[i]] <- N[i] * (diag(pp) - pp %*% t(pp))
+        }
+      }
+      if(!is.numeric(covariate.interest[[d]][,cov.name])){
+        stop("Covariate.interest should be numeric, please check your input.")
+      }
+      X.sub[,ncol(X.sub)] <- covariate.interest[[d]][rownames(X.sub),cov.name]
+      K <- ncol(s.i.mat) + 1
+      n <- nrow(X.sub)
+      X.name <- colnames(X.sub)
+      name.cov <- paste0(colnames(X.sub), ":", rep(colnames(s.i.mat), each = ncol(X.sub)))
+      uniq.SUBid <- unique(SUBid)
+      nn <- length(uniq.SUBid)
+      s.i.lst <- NULL
+      A <- 0
+      for(ll in 1:nn){
+        s.i.SUB <- 0
+        for(i in which(uniq.SUBid[ll] == SUBid)){
+          s.i.SUB <- s.i.SUB + t(kronecker(matrix(unlist(s.i.mat[i,]), ncol=1), matrix(X.sub[i,], ncol=1)))
+          A <- A + kronecker(V.i.lst[[i]], X.sub[i,] %*% t(X.sub[i,]))
+        }
+        s.i.lst <- rbind(s.i.lst, s.i.SUB)
+      }
+      cov_R <- solve(A)
+      colnames(cov_R) <- name.cov
+      rownames(cov_R) <- name.cov
+      colnames(A) <- name.cov
+      rownames(A) <- name.cov
+      colnames(s.i.lst) <- name.cov
+      R_lst <- list(s.i.lst = s.i.lst, cov_R = cov_R)
+
+      #=== generate covriate matrix ===#
+      summary <- list()
+      if(K == 2){
+        ests <- cov_R[c(1:(K-1))*length(X.name), c(1:(K-1))*length(X.name)] %*% sum(s.i.lst[,c(1:(K-1))*length(X.name)])
+      }else{
+        ests <- cov_R[c(1:(K-1))*length(X.name), c(1:(K-1))*length(X.name)] %*% colSums(s.i.lst[,c(1:(K-1))*length(X.name)])
+      }
+      rownames(ests) <- gsub(paste0(X.name[length(X.name)],":"), "", rownames(ests))
+
+      #=== loop for ridge regularization parameter ===#
+      if(cov.type == "ridge"){
+        set.seed(2023)
+        sample.id <- split(sample(nn), (1:nn)%%G)
+        loop_mat <- matrix(0, 3, 3)
+        rownames(loop_mat) <- c("lambda", "Pearson.R","signal")
+        loop_mat["lambda",] <- c(0, 0.05, 0.8)
+        loop_mat <- Calc.pearson(loop_mat, R_lst, sample.id, lambda, G, shrehold)
+        lambda <- (loop_mat["lambda",loop_mat["Pearson.R",] == max(loop_mat["Pearson.R",])])[1]
+        colnames(loop_mat) <- paste0("Tn", as.character(1:ncol(loop_mat)))
+        if(verbose){
+          cat("Tuning ridge parameter : ",lambda, ".\n")
+        }
+        summary$loop_mat <- loop_mat
+      }else if(cov.type == "diag"){
+        lambda <- 0
+      }
+
+      #=== solve GEE equation ===#
+      beta.name <- paste0(X.name[length(X.name)],":", colnames(s.i.mat))
+      gamma.name <- setdiff(colnames(cov_R), beta.name)
+      core.U <- 0
+      for(ll in 1:nrow(s.i.lst)){
+        tmp.U <- s.i.lst[ll,beta.name] - A[beta.name, gamma.name] %*% inv_gamma[[d]][[l]] %*% s.i.lst[ll,gamma.name]
+        core.U <- core.U + tmp.U %*% t(tmp.U)
+      }
+      Sigma <- cov_R[beta.name,beta.name] %*% (core.U) %*% cov_R[beta.name,beta.name]
+      if(K == 2){
+        Sigma_d <- sqrt(Sigma)
+      }else{
+        Sigma_d <- diag(sqrt(diag(Sigma)))
+      }
+      R <- Sigma / (sqrt(diag(Sigma)) %*% t(sqrt(diag(Sigma))))
+      R_lambda <- lambda * R + (1-lambda) * diag(nrow(R))
+      Sigma_lambda <- diag(Sigma_d %*% R_lambda %*% Sigma_d)
+
+      est.mat[rownames(ests), cov.name] <- ests[,1]
+      cov.mat[rownames(ests), cov.name] <- Sigma_lambda
+      # n.vec <- c(n.vec, n)
+    }
+    # names(n.vec) <- colnames(est.mat)
+    summary.stat.study[[d]] <- list(est = est.mat, var = cov.mat, n = n)
+  }
+  return(summary.stat.study)
+}
+
+reg.fit = function(dat,
+                   filter.threshold = 0.1,
+                   ref = NULL,
+                   parallel.core = NULL,
+                   verbose = FALSE){
+
+  study.ID <- names(dat)
   #=== check maximum C.V. 1.5 output warning if too large ===#
-  if(is.null(ref)){
-    maximum.CV <- NULL
-    for(l in 1:L){
-      data.prop <- dat[[l]]$Y / rowSums(dat[[l]]$Y)
-      data.avr.prop <- colMeans(data.prop)
-      maximum.CV <- rbind(maximum.CV, apply(data.prop, 2, sd)/data.avr.prop)
-    }
-    maximum.CV[is.na(maximum.CV)] <- Inf
-    colnames(maximum.CV) <- Melody$dat.inf$taxa.names
-    if(L == 1){
-      ref <- Melody$dat.inf$taxa.names[which.min(maximum.CV)]
+  feature.ID <- NULL
+  for(d in study.ID){
+    feature.ID <- c(feature.ID, colnames(dat[[d]]$Y))
+  }
+  feature.ID <- sort(unique(feature.ID))
+  for(d in study.ID){
+    dat[[d]]$Y <- dat[[d]]$Y[,sort(intersect(feature.ID, colnames(dat[[d]]$Y)))]
+  }
+
+  K <- length(feature.ID)
+  maximum.CV <- matrix(NA, nrow = length(study.ID), ncol = length(feature.ID),
+                       dimnames = list(study.ID, feature.ID))
+  for(d in study.ID){
+    data.prop <- dat[[d]]$Y / rowSums(dat[[d]]$Y)
+    data.avr.prop <- colMeans(data.prop)
+    if(length(study.ID) == 1){
+      maximum.CV <- apply(data.prop, 2, sd)/data.avr.prop
     }else{
-      ref.loc <- which.min(apply(maximum.CV, 2, max))
-      ref <- rep(Melody$dat.inf$taxa.names[ref.loc] ,L)
+      maximum.CV[d, colnames(dat[[d]]$Y)] <- apply(data.prop, 2, sd)/data.avr.prop
     }
+  }
+  maximum.CV[is.na(maximum.CV)] <- Inf
+  if(is.null(ref)){
+    if(length(study.ID) == 1){
+      ref <- feature.ID[which.min(maximum.CV)]
+    }else{
+      ref.loc <- apply(maximum.CV, 1, which.min)
+      ref <- feature.ID[ref.loc]
+    }
+    names(ref) <- study.ID
   }else{
     if(length(ref) == 1){
-      if(ref %in% Melody$dat.inf$taxa.names){
-        ref <- rep(ref, L)
+      if(ref %in% feature.ID){
+        ref <- rep(ref, length(study.ID))
+        names(ref) <- study.ID
       }else{
         stop(paste0(as.character(ref)," isn't in the data.\n") )
       }
+      feature.lst <- feature.ID[rank(maximum.CV, ties.method = "random") <= 10]
+      if(!(ref %in% feature.lst)){
+        warning(paste0("The specified reference ", ref, " in study ", feature.ID,
+                       " has a large variation. Consider choosing a reference from this list for more stable results: ",
+                       paste(feature.lst, collapse = ","), "."))
+      }
     }else{
-      if(length(ref) != L){
+      if(length(ref) != length(study.ID)){
         stop("The reference taxa numbers don't match the study numbers.\n")
       }
-      if(!all(ref %in% Melody$dat.inf$taxa.names)){
+      if(!all(ref %in% feature.ID)){
         stop("some taxa aren't in the data.\n")
+      }
+      for(d in study.ID){
+        feature.lst <- feature.ID[rank(maximum.CV[d,], ties.method = "random") <= 10]
+        if(!(ref[d] %in% feature.lst)){
+          warning(paste0("The specified reference ", ref[d], " in study ", d,
+                         " has a large variation. Consider choosing a reference from this list for more stable results: ",
+                         paste(feature.lst, collapse = ","), "."))
+        }
       }
     }
   }
 
   #=== Switch the reference to the last column ===#
-  ref.id <- match(ref, Melody$dat.inf$taxa.names)
   data.relative <- list()
-  for(l in 1:L){
-    idx = c(setdiff(1:K, ref.id[l]), ref.id[l])
-    idx.rev = order(idx)
-    data.relative[[l]] <- list(Y = dat[[l]]$Y[,idx], X = dat[[l]]$X)
+  for(d in study.ID){
+    idx = c(setdiff(colnames(dat[[d]]$Y), ref[d]), ref[d])
+    data.relative[[d]] <- list(Y = dat[[d]]$Y[,idx], X = dat[[d]]$X)
   }
-
   #=== Generate summary statistics ===#
-  if(verbose){
-    message('++ Generating summary statistics. ++')
-  }
 
-  cores <- detectCores()
-  if(is.null(parallel.core)){
-    parallel.core <- cores[1]-1
-  }else{
-    if(parallel.core >= cores){
-      warning("The number of cores excceed the capacity.\n")
-      parallel.core <- cores[1]-1
-    }
-    if(parallel.core <= 0 | as.integer(parallel.core) != parallel.core){
-      stop("The number of cores must be a positive interger.\n")
-    }
-  }
-  if(verbose){
-    message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
-  }
+  # cores <- detectCores()
+  # if(is.null(parallel.core)){
+  #   parallel.core <- cores[1]-1
+  # }else{
+  #   if(parallel.core >= cores){
+  #     warning("The number of cores excceed the capacity.\n")
+  #     parallel.core <- cores[1]-1
+  #   }
+  #   if(parallel.core <= 0 | as.integer(parallel.core) != parallel.core){
+  #     stop("The number of cores must be a positive interger.\n")
+  #   }
+  # }
+  # if(verbose){
+  #   message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
+  # }
 
   #=== Setup parallel jobs ===#
-  cl <- makeCluster(parallel.core[1])
-  registerDoParallel(cl)
-  reg.fit <- foreach(l = 1:L, .packages = "brglm2") %dopar% {
-    Y.sub <- data.relative[[l]]$Y
-    X.sub <- cbind(1, data.relative[[l]]$X)
+  # cl <- makeCluster(parallel.core[1])
+  # registerDoParallel(cl)
+  # reg.fit <- foreach(l = 1:L, .packages = "brglm2") %dopar% {
+  reg.fit <- list()
+  for(d in study.ID){
+    Y.sub <- data.relative[[d]]$Y
+    X.sub <- cbind(1, data.relative[[d]]$X)
     colnames(X.sub) <- c("Intercept", paste0("V_", as.character(1:(ncol(X.sub)-1))))
-    taxa.set.tmp <- colSums(Y.sub != 0)[1:(ncol(Y.sub)-1)] > filter.threshold
-    Y.sub.tmp <- Y.sub[,c(taxa.set.tmp,TRUE)]
-    ### check if any taxa's correlation are 1.
+    rownames(X.sub) <- rownames(Y.sub)
+    feature.set.tmp <- colSums(Y.sub != 0) > filter.threshold
+    feature.set.tmp[ncol(Y.sub)] <- TRUE
+    Y.sub.tmp <- Y.sub[,feature.set.tmp]
+
+    ## Check if any correlations are 1.
     cors <- cor(Y.sub.tmp)
     lo_tri <- lower.tri(cors, diag = TRUE)
     cors[lo_tri] <- 0
@@ -160,33 +317,46 @@ reg.fit = function(Melody, SUB.id, filter.threshold = 0, ref = NULL, parallel.co
       col_id <- unique(row_col[,"col"])
       tax.rm <- colnames(Y.sub)[row_id]
       tax.kp <- colnames(Y.sub)[col_id]
-      taxa.set.tmp[tax.rm] <- FALSE
-      warning("Some features have high correlation in study ", study.names[l], ", Rmove features:\n",
+      feature.set.tmp[tax.rm] <- FALSE
+      warning("Some features have high correlation in study ", d, ", Rmove features:\n",
               paste0("    ",tax.rm,"\n"))
 
     }
-    Y.sub <- Y.sub[,c(taxa.set.tmp,TRUE)]
-    data.beta <- list(Y = Y.sub, X = X.sub, SUB.id = SUB.id[[l]])
-    tmp <- GetGlm(data.beta = data.beta, X.idx = ncol(X.sub))
-    reg.fit.one <- list(tmp = tmp, data.beta = data.beta, taxa.set = taxa.set.tmp,
-                        ref = ref[l], idx.rev = idx.rev, para.id = l)
+    Y.sub <- Y.sub[,feature.set.tmp]
+    tmp <- GetGlm(data.beta = list(Y = Y.sub, X = X.sub), X.idx = ncol(X.sub))
+
+    #=== summary null model ===#
+    est <- t(tmp$est)
+    N <- rowSums(Y.sub)
+    s.i.mat <- NULL
+    pp_mat <- NULL
+    # V.i.lst <- list()
+    for(i in 1:length(N)){
+      dd <- colSums(matrix(rep(X.sub[i,], ncol(Y.sub)-1), nrow = ncol(X.sub)) * t(est), na.rm = TRUE)
+      pp <- c(exp(dd - max(dd)),1/exp(max(dd)))
+      pp <- (pp/sum(pp))[1:(ncol(Y.sub)-1)]
+      pp_mat <- rbind(pp_mat, pp)
+      mu_hat <- pp * N[i]
+      s.i.mat <- rbind(s.i.mat, Y.sub[i,-ncol(Y.sub)] - mu_hat)
+    }
+    rownames(s.i.mat) <- rownames(Y.sub)
+    rownames(pp_mat) <- rownames(Y.sub)
+    reg.fit.one <- list(ref = ref[d], p = pp_mat, res = s.i.mat, N = N, X = X.sub, para.id = d)
 
     #=== output ===#
-    reg.fit.one
+    reg.fit[[d]] <- reg.fit.one
   }
   #=== stop cluster ===#
-  stopCluster(cl)
+  # stopCluster(cl)
 
   #=== reorder output ===#
-  order.vec <- c()
-  for(l in 1:L){
-    order.vec <- c(order.vec, reg.fit[[l]]$para.id)
-    reg.fit[[l]]$para.id <- NULL
+  #order.vec <- c()
+  for(d in study.ID){
+    #order.vec <- c(order.vec, reg.fit[[l]]$para.id)
+    reg.fit[[d]]$para.id <- NULL
   }
-  reg.fit <- reg.fit[order(order.vec)]
-  Melody$dat.inf$ref <- ref
-  Melody$reg.fit <- reg.fit
-  return(Melody)
+  #reg.fit <- reg.fit[order(order.vec)]
+  return(reg.fit)
 }
 
 ## This function generates the regression coefficient estimates and covariance estimates.
@@ -199,12 +369,14 @@ GetGlm <- function(data.beta, X.idx){
     est.single <- matrix(NA, nrow = 2, ncol = K-1,
                          dimnames = list(c(":(Intercept)", ":X"),
                                            colnames(data.beta$Y)[1:(K-1)]))
-    est.single[":X",] <- 0
+  }else if(d == 3){
+    est.single <- matrix(NA, nrow = d, ncol = K-1,
+                         dimnames = list(c(":(Intercept)", ":X", ":XV"),
+                                         colnames(data.beta$Y)[1:(K-1)]))
   }else{
     est.single <- matrix(NA, nrow = d, ncol = K-1,
                          dimnames = list(c(":(Intercept)", paste0(":XV_", 1:(d-1))),
                                          colnames(data.beta$Y)[1:(K-1)]))
-    est.single[paste0(":XV_", d-1),] <- 0
   }
   dim.name <- rownames(est.single)
 
@@ -217,13 +389,22 @@ GetGlm <- function(data.beta, X.idx){
       tmp.X <- data.beta$X[idx.subj,]
       X.idx.id <- colnames(tmp.X)[X.idx]
       # Test the singularity
-      qrstr <- qr(tmp.X[,c(1, X.idx, setdiff(1:d, c(1,X.idx)))])
-      # Check pivot
-      if(!all(qrstr$pivot[c(1,2)] %in% c(1,2))){
-        stop("This reference cannot work, please select another one.")
+      if(all(is.na(tmp.X[,X.idx]))){
+        qrstr <- qr(tmp.X[,c(1, setdiff(1:d, c(1,X.idx)))])
+        # Check pivot
+        if(qrstr$pivot[1] != 1){
+          stop("This reference cannot work, please select another one.")
+        }
+      }else{
+        qrstr <- qr(tmp.X[,c(1, X.idx, setdiff(1:d, c(1,X.idx)))])
+        # Check pivot
+        if(!all(qrstr$pivot[c(1,2)] %in% c(1,2))){
+          stop("This reference cannot work, please select another one.")
+        }
       }
       # Get non-singular sub-columns
-      tmp.X <- tmp.X[,colnames(tmp.X) %in% colnames(qrstr$qr)[1:qrstr$rank]]
+      keep.covariate <- setdiff(colnames(tmp.X)[colnames(tmp.X) %in% colnames(qrstr$qr)[1:qrstr$rank]], colnames(tmp.X)[c(1,d)])
+
       # Try brglmFit model
       if(d == 2){
         input.data.tmp = list(Y=tmp[idx.subj,])
@@ -231,7 +412,7 @@ GetGlm <- function(data.beta, X.idx){
                            family = binomial(logit), method = brglm2::brglmFit, type = "AS_mean")
       }else{
         input.data.tmp = list(Y=tmp[idx.subj,],
-                              X = data.beta$X[idx.subj,-c(1, which(colnames(tmp.X) == X.idx.id))])
+                              X = data.beta$X[idx.subj, keep.covariate])
         glm.out.tmp =  glm(Y ~ X, data = input.data.tmp,
                            family = binomial(logit), method = brglm2::brglmFit, type = "AS_mean")
       }
@@ -254,134 +435,6 @@ GetGlm <- function(data.beta, X.idx){
   )
   summary = list(est=est.single, n=n)
   return(summary)
-}
-
-get_ridge_sumstat <- function(data.beta, summarys, G, shrehold, cov.type = "diag", verbose = FALSE){
-
-  Y.sub <- data.beta$Y
-  X.sub <- data.beta$X
-  K <- ncol(Y.sub)
-  X.name <- colnames(X.sub)
-  SUBid <- as.character(data.beta$SUB.id)
-  uniq.SUBid <- unique(SUBid)
-  nn <- length(uniq.SUBid)
-  R_lst <- get_cov_sand(summary.stat = summarys,data.beta = data.beta, K = K)
-  #=== generate covriate matrix ===#
-  set.seed(2023)
-  sample.id <- split(sample(nn), (1:nn)%%G)
-  summary <- list()
-  if(K == 2){
-    summary$est <- R_lst$cov_R[c(1:(K-1))*length(X.name), c(1:(K-1))*length(X.name)] %*% sum(R_lst$s.i.lst[,c(1:(K-1))*length(X.name)])
-  }else{
-    summary$est <- R_lst$cov_R[c(1:(K-1))*length(X.name), c(1:(K-1))*length(X.name)] %*% colSums(R_lst$s.i.lst[,c(1:(K-1))*length(X.name)])
-  }
-  summary$est <- as.vector(summary$est)
-
-  #=== loop for ridge regularization parameter ===#
-  if(cov.type == "ridge"){
-    loop_mat <- matrix(0, 3, 3)
-    rownames(loop_mat) <- c("lambda", "Pearson.R","signal")
-    loop_mat["lambda",] <- c(0, 0.05, 0.8)
-    loop_mat <- Calc.pearson(loop_mat, R_lst, sample.id, lambda, G, shrehold)
-    lambda <- (loop_mat["lambda",loop_mat["Pearson.R",] == max(loop_mat["Pearson.R",])])[1]
-    colnames(loop_mat) <- paste0("Tn", as.character(1:ncol(loop_mat)))
-    print(loop_mat[1:2,])
-    if(verbose){
-      cat("Tuning ridge parameter : ",lambda, ".\n")
-    }
-    summary$loop_mat <- loop_mat
-  }else if(cov.type == "diag"){
-    lambda <- 0
-  }
-  cov.ridge <- R_lst$cov_R
-  A.ridge <- R_lst$A
-  colnames(cov.ridge) <- colnames(R_lst$cov_sand)
-  rownames(cov.ridge) <- rownames(R_lst$cov_sand)
-
-  #=== solve GEE equation ===#
-  beta.name <- paste0(X.name[length(X.name)],":", as.character(1:(K-1)))
-  gamma.name <- setdiff(colnames(cov.ridge), beta.name)
-  core.U <- 0
-  for(l in 1:nrow(R_lst$s.i.lst)){
-    tmp.U <- R_lst$s.i.lst[l,beta.name] - A.ridge[beta.name, gamma.name]%*%solve(A.ridge[gamma.name, gamma.name]) %*% R_lst$s.i.lst[l,gamma.name]
-    core.U <- core.U + tmp.U %*% t(tmp.U)
-  }
-  Sigma <- cov.ridge[beta.name,beta.name] %*% (core.U) %*% cov.ridge[beta.name,beta.name]
-  if(K == 2){
-    Sigma_d <- sqrt(Sigma)
-  }else{
-    Sigma_d <- diag(sqrt(diag(Sigma)))
-  }
-  R <- Sigma / (sqrt(diag(Sigma)) %*% t(sqrt(diag(Sigma))))
-  R_lambda <- lambda * R + (1-lambda) * diag(nrow(R))
-  Sigma_lambda <- Sigma_d %*% R_lambda %*% Sigma_d
-  summary$cov <- Sigma_lambda
-  summary$n <- R_lst$n
-  return(summary)
-}
-
-# This find output the sandwich covariance
-get_cov_sand <- function(summary.stat, data.beta, K){
-
-  n <- summary.stat$n
-  est <- t(summary.stat$est)
-  X.name <- colnames(data.beta$X)
-
-  #=== Cluster samples from same subject ===#
-  SUBid <- as.character(data.beta$SUB.id)
-  uniq.SUBid <- unique(SUBid)
-  nn <- length(uniq.SUBid)
-  X <- data.beta$X
-  N <- rowSums(data.beta$Y)
-  Y <- data.beta$Y
-  name.cov <- paste0(X.name, ":", as.character(sort(rep(1:(K-1),ncol(data.beta$X)))))
-  pp_mat <- NULL
-  for(i in 1:n){
-    dd <- colSums(matrix(rep(X[i,], K-1), nrow = ncol(data.beta$X)) * t(est), na.rm = TRUE)
-    pp <- c(exp(dd - max(dd)),1/exp(max(dd)))
-    pp <- pp/sum(pp)
-    pp_mat <- rbind(pp_mat, pp[1:(K-1)])
-  }
-
-  s.i.lst <- NULL
-  B <- matrix(0, ncol(data.beta$X)*(K-1), ncol(data.beta$X)*(K-1))
-  A <- 0
-  for(l in 1:nn){
-    s.i.SUB <- 0
-    for(i in which(uniq.SUBid[l] == SUBid)){
-      mu_hat <- pp_mat[i,] * N[i]
-      s.i.SUB <- s.i.SUB + t(kronecker( matrix(Y[i,-K] - mu_hat, ncol=1), matrix(X[i,], ncol=1)))
-      if(K == 2){
-        V_i <- N[i] * ( pp_mat[i,] - pp_mat[i,] * t(pp_mat[i,]))
-      }else{
-        V_i <- N[i] * ( diag(pp_mat[i,]) - pp_mat[i,] %*% t(pp_mat[i,]) )
-      }
-      A <- A + kronecker(V_i, X[i,] %*% t(X[i,]))
-    }
-    s.i.lst <- rbind(s.i.lst, s.i.SUB)
-    B <- B + s.i.lst[l,]  %*% t(s.i.lst[l,])
-  }
-
-  cov_R <- solve(A)
-  A_d <- diag(sqrt(diag(A/n)))
-  R_A <- A / (sqrt(diag(A)) %*% t(sqrt(diag(A))))
-  colnames(cov_R) <- name.cov
-  rownames(cov_R) <- name.cov
-  colnames(A) <- name.cov
-  rownames(A) <- name.cov
-  colnames(s.i.lst) <- name.cov
-  B_d <- diag(sqrt(diag(B/n)))
-  R_B <- B / (sqrt(diag(B)) %*% t(sqrt(diag(B))))
-  cov_sand <- cov_R %*% B %*% cov_R
-  return(list(s.i.lst = s.i.lst,
-              A = A,
-              cov_R = cov_R,
-              cov_sand = cov_sand,
-              est = est,
-              n = nn,
-              ids = paste0(X.name[length(X.name)],":",
-                           as.character(1:(K-1)))))
-
 }
 
 # Calculate pearson for lambda
