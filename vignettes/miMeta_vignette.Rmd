@@ -132,7 +132,7 @@ Microbiome association studies can involve a large number of covariates of inter
 # You may see the following website on how to directly load data from 
 # github into R https://github.com/ZjpWei/Melody/data/
 
-load("~/Documents/Researches/Package_build/miMeta/metabolome_data.Rdata")
+load("~/Documents/Researches/Package_build/metabolome_data.Rdata")
 otu_data_lst <- metabolome_data$otu_data_lst
 cmpd_data_lst <- metabolome_data$cmpd_data_lst
 covariates_adjust_lst <- metabolome_data$covariates_adjust_lst

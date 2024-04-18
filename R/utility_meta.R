@@ -142,234 +142,6 @@ GIC.cal <- function(result,
   }
 }
 
-# Search delta
-# search.ref.loc.gsec <- function(summary.stat.study,
-#                                 lasso.mat,
-#                                 study.l,
-#                                 quantile_sm,
-#                                 search.prop,
-#                                 lambda,
-#                                 result,
-#                                 initial.range = 0.1,
-#                                 tune.type,
-#                                 tol = 1e-3,
-#                                 verbose = FALSE){
-#
-#   feature.set <- lasso.mat$feature.set
-#   study.ID <- lasso.mat$study.ID
-#   feature.ID <- lasso.mat$feature.ID
-#   ref <- lasso.mat$ref
-#   L <- length(study.ID)
-#   p.pi <- 2 / (sqrt(5) + 1)
-#   if(initial.range > 1){
-#     stop("Searching range should be smaller than 1. \n")
-#   }
-#   if(is.null(result)){
-#     s.1.prop <- rep(1/2, L)
-#     s.2.prop <- rep(1/2, L)
-#     s.left.prop <- rep(1/2, L)
-#     s.right.prop <- rep(1/2, L)
-#     ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.1.prop)
-#     initial.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                  delta = - ref.quant, support.size = lambda)
-#     GIC.result <- GIC.cal(result = initial.result, tune.type = tune.type)
-#   }else{
-#     s.1.prop <- search.prop
-#     s.2.prop <- search.prop
-#     s.left.prop <- search.prop
-#     s.right.prop <- search.prop
-#     GIC.result <- result$GIC.result
-#   }
-#   loop.range <- TRUE
-#   s.1.GIC <- -Inf
-#   s.2.GIC <- -Inf
-#   while(loop.range){
-#     if(s.1.GIC < GIC.result){
-#       s.1.prop[study.l] <- max(s.1.prop[study.l] - initial.range / 2, 0)
-#       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.1.prop)
-#       s.1.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                delta = - ref.quant, support.size = lambda)
-#       s.1.GIC <- GIC.cal(result = s.1.result, tune.type = tune.type)
-#     }
-#     if(s.2.GIC < GIC.result){
-#       s.2.prop[study.l] <- min(s.2.prop[study.l] + initial.range / 2, 1)
-#       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.2.prop)
-#       s.2.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                delta = - ref.quant, support.size = lambda)
-#       s.2.GIC <- GIC.cal(result = s.2.result, tune.type = tune.type)
-#     }
-#     if(s.1.GIC > GIC.result & s.2.GIC > GIC.result){
-#       loop.range <- FALSE
-#     }else if(s.1.prop[study.l] == 0 | s.2.prop[study.l] == 1){
-#       loop.range <- FALSE
-#     }
-#   }
-#   #===============================================#
-#   s.left.prop[study.l] <- s.1.prop[study.l] * p.pi + s.2.prop[study.l] * (1 - p.pi)
-#   ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.left.prop)
-#   s.left.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                               delta = - ref.quant, support.size = lambda)
-#   s.left.GIC <- GIC.cal(result = s.left.result, tune.type = tune.type)
-#   #===============================================#
-#   s.right.prop[study.l] <- s.1.prop[study.l] * (1 - p.pi) + s.2.prop[study.l] * p.pi
-#   ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.right.prop)
-#   s.right.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                delta = - ref.quant, support.size = lambda)
-#   s.right.GIC <- GIC.cal(result = s.right.result, tune.type = tune.type)
-#   #===============================================#
-#   # we have:
-#   # s.1.result; s.1.GIC
-#   # s.2.result; s.2.GIC
-#   # s.left.result; s.left.GIC
-#   # s.right.result; s.right.GIC
-#   #===============================================#
-#   loop.study <- TRUE
-#   loop.times <- 0
-#   while(loop.study){
-#     #=== check BIC; or prop ===#
-#     s.all.prop <- c(s.1.prop[study.l], s.left.prop[study.l], s.right.prop[study.l], s.2.prop[study.l])
-#     s.all.GIC <-  c(s.1.GIC, s.left.GIC, s.right.GIC, s.2.GIC)
-#     if(s.all.GIC[1] == min(s.all.GIC) & abs(s.all.prop[1] - s.all.prop[2]) <= tol){
-#       loop.study <- FALSE
-#       s.new.prop <- s.1.prop
-#       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
-#       s.new.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                  delta = - ref.quant, support.size = lambda)
-#       s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
-#       s.new.result$GIC.result <- s.new.GIC
-#     }else if(s.all.GIC[4] == min(s.all.GIC) & abs(s.all.prop[4] - s.all.prop[3]) <= tol){
-#       loop.study <- FALSE
-#       s.new.prop <- s.2.prop
-#       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
-#       s.new.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                  delta = - ref.quant, support.size = lambda)
-#       s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
-#       s.new.result$GIC.result <- s.new.GIC
-#     }else if(s.all.GIC[2] == min(s.all.GIC) & abs(s.all.prop[1] - s.all.prop[3]) <= tol){
-#       loop.study <- FALSE
-#       s.new.prop <- (s.1.prop + s.right.prop) / 2
-#       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
-#       s.new.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                  delta = - ref.quant, support.size = lambda)
-#       s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
-#       s.new.result$GIC.result <- s.new.GIC
-#     }else if(s.all.GIC[3] == min(s.all.GIC) & abs(s.all.prop[2] - s.all.prop[4]) <= tol){
-#       loop.study <- FALSE
-#       s.new.prop <- (s.left.prop + s.2.prop) / 2
-#       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
-#       s.new.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                  delta = - ref.quant, support.size = lambda)
-#       s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
-#       s.new.result$GIC.result <- s.new.GIC
-#     }else if(loop.times >= 100){
-#       loop.study <- FALSE
-#       warning("Search delta over 100 loops. Not converge. \n")
-#       s.new.prop <- (s.1.prop + s.2.prop) / 2
-#       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
-#       s.new.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                  delta = - ref.quant, support.size = lambda)
-#       s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
-#       s.new.result$GIC.result <- s.new.GIC
-#     }
-#     if(min(s.all.GIC[1:2]) == min(s.all.GIC)){
-#       #=== minimize GIC at s.left or s.1 ===#
-#       s.2.prop[study.l] <- s.right.prop[study.l]
-#       s.2.GIC <- s.right.GIC
-#       s.right.prop[study.l] <- s.left.prop[study.l]
-#       s.right.GIC <- s.left.GIC
-#       s.left.prop[study.l] <- s.1.prop[study.l] * p.pi + s.2.prop[study.l] * (1 - p.pi)
-#       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.left.prop)
-#       s.left.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                   delta = - ref.quant, support.size = lambda)
-#       s.left.GIC <- GIC.cal(result = s.left.result, tune.type = tune.type)
-#     }else if(min(s.all.GIC[3:4]) == min(s.all.GIC)){
-#       #=== minimize GIC at s.right or s.2 ===#
-#       s.1.prop[study.l] <- s.left.prop[study.l]
-#       s.1.GIC <- s.left.GIC
-#       s.left.prop[study.l] <- s.right.prop[study.l]
-#       s.left.GIC <- s.right.GIC
-#       s.right.prop[study.l] <- s.1.prop[study.l] * (1 - p.pi) + s.2.prop[study.l] * p.pi
-#       ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.right.prop)
-#       s.right.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
-#                                    delta = - ref.quant, support.size = lambda)
-#       s.right.GIC <- GIC.cal(result = s.right.result, tune.type = tune.type)
-#     }
-#     #=== Calculate loop time ===#
-#     loop.times <- loop.times + 1
-#   }
-#   return(list(study.min = s.new.prop, study.min.GIC = s.new.GIC, result = s.new.result))
-# }
-
-# Utility function
-# search.subset.s <- function(summary.stat.study,
-#                             lasso.mat,
-#                             L,
-#                             quantile_sm,
-#                             s.size,
-#                             tmp.result,
-#                             search.loc,
-#                             GIC.result,
-#                             initial.range,
-#                             tune.type,
-#                             tol,
-#                             verbose){
-#   loop <- TRUE
-#   loop.time <- 0
-#   if(is.null(tmp.result)){
-#     for(l in 1:L){
-#       tmp.search <- search.ref.loc(summary.stat.study = summary.stat.study,
-#                                    lasso.mat = lasso.mat,
-#                                    study.l = l,
-#                                    quantile_sm = quantile_sm,
-#                                    search.prop = search.loc,
-#                                    lambda = s.size,
-#                                    result = tmp.result,
-#                                    initial.range = initial.range,
-#                                    tune.type = tune.type,
-#                                    tol = tol,
-#                                    verbose = verbose)
-#
-#       GIC.result <- tmp.search$study.min.GIC
-#       tmp.result <- tmp.search$result
-#       search.loc <- tmp.search$study.min
-#     }
-#   }
-#   while(loop){
-#     search.loc.tmp <- search.loc
-#     GIC.result.tmp <- GIC.result
-#     for(l in 1:L){
-#       tmp.search <- search.ref.loc(summary.stat.study = summary.stat.study,
-#                                    lasso.mat = lasso.mat,
-#                                    study.l = l,
-#                                    quantile_sm = quantile_sm,
-#                                    search.prop = search.loc.tmp,
-#                                    lambda = s.size,
-#                                    result = tmp.result,
-#                                    initial.range = initial.range,
-#                                    tune.type = tune.type,
-#                                    tol = tol,
-#                                    verbose = verbose)
-#       if(tmp.search$study.min.GIC < GIC.result.tmp){
-#         search.loc.tmp <- tmp.search$study.min
-#         GIC.result.tmp <- tmp.search$study.min.GIC
-#         tmp.result <- tmp.search$result
-#       }
-#     }
-#     loop.time <- loop.time + 1
-#     # cat(paste0("loop time ", loop.time, ":", paste0(search.loc - search.loc.tmp, collapse = ","), ".\n"))
-#     search.loc <- search.loc.tmp
-#     if(abs(GIC.result - GIC.result.tmp) <= tol){
-#       loop <- FALSE
-#     }else if(loop.time >= 100){
-#       loop <- FALSE
-#       warning(paste0("Loop over 100 times for searching best subset of ", s, ".\n"))
-#     }else{
-#       GIC.result <- GIC.result.tmp
-#     }
-#   }
-#   return(list(tmp.result = tmp.result, GIC.result = GIC.result, search.loc = search.loc))
-# }
-
 # Utility function
 cal.quantile <- function(quantile_sm, prop){
   tmp_quant <- c()
@@ -395,7 +167,6 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
                           verbose = verbose){
 
   study.ID <- names(summary.stat.study)
-
   L <- length(study.ID)
   tune.set <- list()
   GIC.tau <- c()
@@ -434,11 +205,12 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
                                     tmp.result = tmp.result,
                                     search.loc = search.loc,
                                     GIC.result = GIC.result,
-                                    initial.range = 0.1,
+                                    initial.range = 0.2,
                                     tune.type = tune.type,
                                     tol = tol,
                                     NMAX = NMAX,
                                     verbose = verbose)
+
       if(s.lambda != sum(tmp.subset$tmp.result$mu.fit!=0)){
         tmp.subset <- search.subset.s(summary.stat.study = summary.stat.study,
                                       lasso.mat = lasso.mat,
@@ -448,7 +220,7 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
                                       tmp.result = NULL,
                                       search.loc = rep(-Inf, L),
                                       GIC.result = Inf,
-                                      initial.range = 0.1,
+                                      initial.range = 0.2,
                                       tune.type = tune.type,
                                       tol = tol,
                                       NMAX = NMAX,
@@ -708,7 +480,7 @@ ft <- function(seqs, xt){
   return(seqs[which.max(abs(seqs - xt))[1]])
 }
 
-######################## version 2: Powell + quadratic interpolation #############
+######################## Powell + quadratic interpolation #############
 search.subset.s <- function(summary.stat.study,
                             lasso.mat,
                             L,
@@ -749,24 +521,38 @@ search.subset.s <- function(summary.stat.study,
     search.loc.tmp <- search.loc
     GIC.result.tmp <- GIC.result
     for(l in 1:L){
-      tmp.search <- search.ref.loc(summary.stat.study = summary.stat.study,
-                                   lasso.mat = lasso.mat,
-                                   study.l = loop.mat[l,],
-                                   quantile_sm = quantile_sm,
-                                   search.prop = search.loc.tmp,
-                                   lambda = s.size,
-                                   result = tmp.result,
-                                   initial.range = initial.range,
-                                   tune.type = tune.type,
-                                   tol = tol,
-                                   verbose = verbose)
-
+      if(max(abs(search.loc - search.loc.tmp)) >= 1e-3){
+        tmp.search <- search.ref.loc(summary.stat.study = summary.stat.study,
+                                     lasso.mat = lasso.mat,
+                                     study.l = loop.mat[l,],
+                                     quantile_sm = quantile_sm,
+                                     search.prop = search.loc.tmp,
+                                     lambda = s.size,
+                                     result = tmp.result,
+                                     initial.range = initial.range,
+                                     tune.type = tune.type,
+                                     tol = tol,
+                                     verbose = verbose)
+      }else{
+        tmp.search <- search.ref.loc.gsec(summary.stat.study = summary.stat.study,
+                                          lasso.mat = lasso.mat,
+                                          study.l = l,
+                                          quantile_sm = quantile_sm,
+                                          search.prop = search.loc.tmp,
+                                          lambda = s.size,
+                                          result = tmp.result,
+                                          initial.range = initial.range,
+                                          tune.type = tune.type,
+                                          tol = tol,
+                                          verbose = verbose)
+      }
       if(tmp.search$study.min.GIC < GIC.result.tmp){
         search.loc.tmp <- tmp.search$study.min
         GIC.result.tmp <- tmp.search$study.min.GIC
         tmp.result <- tmp.search$result
       }
     }
+
     ## Search on the new direction
     if(max(abs(search.loc - search.loc.tmp)) > tol){
       loop.new.vec <- (search.loc - search.loc.tmp) / max(abs(search.loc - search.loc.tmp))
@@ -794,7 +580,7 @@ search.subset.s <- function(summary.stat.study,
       loop <- FALSE
     }else if(loop.time > NMAX){
       loop <- FALSE
-      warning(paste0("Loops exceed the given loop times for searching best subset of ", s, ".\n"))
+      warning(paste0("Loops exceed the given loop times for searching best subset of ", s.size, ".\n"))
     }else{
       ## check loop.time is whether a multiplier of L
       if(loop.time %% L == 0){
@@ -818,7 +604,7 @@ search.ref.loc <- function(summary.stat.study,
                            search.prop,
                            lambda,
                            result,
-                           initial.range = 0.1,
+                           initial.range = 0.2,
                            tune.type,
                            tol = 1e-3,
                            verbose = FALSE){
@@ -895,9 +681,6 @@ search.ref.loc <- function(summary.stat.study,
                             support.size = lambda)
     GIC_x2 <- GIC.cal(result = x2.result, tune.type = tune.type)
   }
-
-  # seqs <- c(sqrt(sum((x0.prop - x.prop)^2)), sqrt(sum((x1.prop - x.prop)^2)), sqrt(sum((x2.prop - x.prop)^2))) *
-  #   sign(c((x0.prop - x.prop)[non.zero.dir], (x1.prop - x.prop)[non.zero.dir], (x2.prop - x.prop)[non.zero.dir]))
 
   seqs <- c((x0.prop - x.prop)[non.zero.dir], (x1.prop - x.prop)[non.zero.dir], (x2.prop - x.prop)[non.zero.dir])
   GIC.seqs <- c(GIC_x0, GIC_x1, GIC_x2)
@@ -1000,3 +783,231 @@ search.ref.loc <- function(summary.stat.study,
   }
   return(list(study.min = x.star.prop, study.min.GIC = GIC_x_star, result = x.star.result))
 }
+
+# Search delta
+search.ref.loc.gsec <- function(summary.stat.study,
+                                lasso.mat,
+                                study.l,
+                                quantile_sm,
+                                search.prop,
+                                lambda,
+                                result,
+                                initial.range = 0.2,
+                                tune.type,
+                                tol = 1e-3,
+                                verbose = FALSE){
+
+  feature.set <- lasso.mat$feature.set
+  study.ID <- lasso.mat$study.ID
+  feature.ID <- lasso.mat$feature.ID
+  ref <- lasso.mat$ref
+  L <- length(study.ID)
+  p.pi <- 2 / (sqrt(5) + 1)
+  if(initial.range > 1){
+    stop("Searching range should be smaller than 1. \n")
+  }
+  if(is.null(result)){
+    s.1.prop <- rep(1/2, L)
+    s.2.prop <- rep(1/2, L)
+    s.left.prop <- rep(1/2, L)
+    s.right.prop <- rep(1/2, L)
+    ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.1.prop)
+    initial.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                                 delta = - ref.quant, support.size = lambda)
+    GIC.result <- GIC.cal(result = initial.result, tune.type = tune.type)
+  }else{
+    s.1.prop <- search.prop
+    s.2.prop <- search.prop
+    s.left.prop <- search.prop
+    s.right.prop <- search.prop
+    GIC.result <- result$GIC.result
+  }
+  loop.range <- TRUE
+  s.1.GIC <- -Inf
+  s.2.GIC <- -Inf
+  while(loop.range){
+    if(s.1.GIC < GIC.result){
+      s.1.prop[study.l] <- max(s.1.prop[study.l] - initial.range / 2, 0)
+      ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.1.prop)
+      s.1.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                               delta = - ref.quant, support.size = lambda)
+      s.1.GIC <- GIC.cal(result = s.1.result, tune.type = tune.type)
+    }
+    if(s.2.GIC < GIC.result){
+      s.2.prop[study.l] <- min(s.2.prop[study.l] + initial.range / 2, 1)
+      ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.2.prop)
+      s.2.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                               delta = - ref.quant, support.size = lambda)
+      s.2.GIC <- GIC.cal(result = s.2.result, tune.type = tune.type)
+    }
+    if(s.1.GIC > GIC.result & s.2.GIC > GIC.result){
+      loop.range <- FALSE
+    }else if(s.1.prop[study.l] == 0 | s.2.prop[study.l] == 1){
+      loop.range <- FALSE
+    }
+  }
+  #===============================================#
+  s.left.prop[study.l] <- s.1.prop[study.l] * p.pi + s.2.prop[study.l] * (1 - p.pi)
+  ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.left.prop)
+  s.left.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                              delta = - ref.quant, support.size = lambda)
+  s.left.GIC <- GIC.cal(result = s.left.result, tune.type = tune.type)
+  #===============================================#
+  s.right.prop[study.l] <- s.1.prop[study.l] * (1 - p.pi) + s.2.prop[study.l] * p.pi
+  ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.right.prop)
+  s.right.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                               delta = - ref.quant, support.size = lambda)
+  s.right.GIC <- GIC.cal(result = s.right.result, tune.type = tune.type)
+  #===============================================#
+  # we have:
+  # s.1.result; s.1.GIC
+  # s.2.result; s.2.GIC
+  # s.left.result; s.left.GIC
+  # s.right.result; s.right.GIC
+  #===============================================#
+  loop.study <- TRUE
+  loop.times <- 0
+  while(loop.study){
+    #=== check BIC; or prop ===#
+    s.all.prop <- c(s.1.prop[study.l], s.left.prop[study.l], s.right.prop[study.l], s.2.prop[study.l])
+    s.all.GIC <-  c(s.1.GIC, s.left.GIC, s.right.GIC, s.2.GIC)
+    if(s.all.GIC[1] == min(s.all.GIC) & abs(s.all.prop[1] - s.all.prop[2]) <= tol){
+      loop.study <- FALSE
+      s.new.prop <- s.1.prop
+      ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
+      s.new.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                                 delta = - ref.quant, support.size = lambda)
+      s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
+      s.new.result$GIC.result <- s.new.GIC
+    }else if(s.all.GIC[4] == min(s.all.GIC) & abs(s.all.prop[4] - s.all.prop[3]) <= tol){
+      loop.study <- FALSE
+      s.new.prop <- s.2.prop
+      ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
+      s.new.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                                 delta = - ref.quant, support.size = lambda)
+      s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
+      s.new.result$GIC.result <- s.new.GIC
+    }else if(s.all.GIC[2] == min(s.all.GIC) & abs(s.all.prop[1] - s.all.prop[3]) <= tol){
+      loop.study <- FALSE
+      s.new.prop <- (s.1.prop + s.right.prop) / 2
+      ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
+      s.new.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                                 delta = - ref.quant, support.size = lambda)
+      s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
+      s.new.result$GIC.result <- s.new.GIC
+    }else if(s.all.GIC[3] == min(s.all.GIC) & abs(s.all.prop[2] - s.all.prop[4]) <= tol){
+      loop.study <- FALSE
+      s.new.prop <- (s.left.prop + s.2.prop) / 2
+      ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
+      s.new.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                                 delta = - ref.quant, support.size = lambda)
+      s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
+      s.new.result$GIC.result <- s.new.GIC
+    }else if(loop.times >= 100){
+      loop.study <- FALSE
+      warning("Search delta over 100 loops. Not converge. \n")
+      s.new.prop <- (s.1.prop + s.2.prop) / 2
+      ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.new.prop)
+      s.new.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                                 delta = - ref.quant, support.size = lambda)
+      s.new.GIC <- GIC.cal(result = s.new.result, tune.type = tune.type)
+      s.new.result$GIC.result <- s.new.GIC
+    }
+    if(min(s.all.GIC[1:2]) == min(s.all.GIC)){
+      #=== minimize GIC at s.left or s.1 ===#
+      s.2.prop[study.l] <- s.right.prop[study.l]
+      s.2.GIC <- s.right.GIC
+      s.right.prop[study.l] <- s.left.prop[study.l]
+      s.right.GIC <- s.left.GIC
+      s.left.prop[study.l] <- s.1.prop[study.l] * p.pi + s.2.prop[study.l] * (1 - p.pi)
+      ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.left.prop)
+      s.left.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                                  delta = - ref.quant, support.size = lambda)
+      s.left.GIC <- GIC.cal(result = s.left.result, tune.type = tune.type)
+    }else if(min(s.all.GIC[3:4]) == min(s.all.GIC)){
+      #=== minimize GIC at s.right or s.2 ===#
+      s.1.prop[study.l] <- s.left.prop[study.l]
+      s.1.GIC <- s.left.GIC
+      s.left.prop[study.l] <- s.right.prop[study.l]
+      s.left.GIC <- s.right.GIC
+      s.right.prop[study.l] <- s.1.prop[study.l] * (1 - p.pi) + s.2.prop[study.l] * p.pi
+      ref.quant <- cal.quantile(quantile_sm = quantile_sm, prop = s.right.prop)
+      s.right.result <- byabess_AA(summary.stat.study = summary.stat.study, lasso.mat = lasso.mat,
+                                   delta = - ref.quant, support.size = lambda)
+      s.right.GIC <- GIC.cal(result = s.right.result, tune.type = tune.type)
+    }
+    #=== Calculate loop time ===#
+    loop.times <- loop.times + 1
+  }
+  return(list(study.min = s.new.prop, study.min.GIC = s.new.GIC, result = s.new.result))
+}
+
+# # Utility function
+# search.subset.s <- function(summary.stat.study,
+#                             lasso.mat,
+#                             L,
+#                             quantile_sm,
+#                             s.size,
+#                             tmp.result,
+#                             search.loc,
+#                             GIC.result,
+#                             initial.range,
+#                             tune.type,
+#                             tol,
+#                             verbose){
+#   loop <- TRUE
+#   loop.time <- 0
+#   if(is.null(tmp.result)){
+#     for(l in 1:L){
+#       tmp.search <- search.ref.loc(summary.stat.study = summary.stat.study,
+#                                    lasso.mat = lasso.mat,
+#                                    study.l = l,
+#                                    quantile_sm = quantile_sm,
+#                                    search.prop = search.loc,
+#                                    lambda = s.size,
+#                                    result = tmp.result,
+#                                    initial.range = initial.range,
+#                                    tune.type = tune.type,
+#                                    tol = tol,
+#                                    verbose = verbose)
+#
+#       GIC.result <- tmp.search$study.min.GIC
+#       tmp.result <- tmp.search$result
+#       search.loc <- tmp.search$study.min
+#     }
+#   }
+#   while(loop){
+#     search.loc.tmp <- search.loc
+#     GIC.result.tmp <- GIC.result
+#     for(l in 1:L){
+#       tmp.search <- search.ref.loc(summary.stat.study = summary.stat.study,
+#                                    lasso.mat = lasso.mat,
+#                                    study.l = l,
+#                                    quantile_sm = quantile_sm,
+#                                    search.prop = search.loc.tmp,
+#                                    lambda = s.size,
+#                                    result = tmp.result,
+#                                    initial.range = initial.range,
+#                                    tune.type = tune.type,
+#                                    tol = tol,
+#                                    verbose = verbose)
+#       if(tmp.search$study.min.GIC < GIC.result.tmp){
+#         search.loc.tmp <- tmp.search$study.min
+#         GIC.result.tmp <- tmp.search$study.min.GIC
+#         tmp.result <- tmp.search$result
+#       }
+#     }
+#     loop.time <- loop.time + 1
+#     # cat(paste0("loop time ", loop.time, ":", paste0(search.loc - search.loc.tmp, collapse = ","), ".\n"))
+#     search.loc <- search.loc.tmp
+#     if(abs(GIC.result - GIC.result.tmp) <= tol){
+#       loop <- FALSE
+#     }else if(loop.time >= 100){
+#       loop <- FALSE
+#       warning(paste0("Loop over 100 times for searching best subset of ", s, ".\n"))
+#     }else{
+#       GIC.result <- GIC.result.tmp
+#     }
+#   }
+#   return(list(tmp.result = tmp.result, GIC.result = GIC.result, search.loc = search.loc))
+# }

@@ -101,17 +101,12 @@ melody.meta.summary <- function(summary.stats,
     quantile_sm <- NULL
     # delta.median <- NULL
     for(d in study.id.tmp){
-      tmp_qt <- quantile(summary.stat.study[[d]]$est, probs = c(0.05, 0.95))
-      # delta.median <- c(delta.median, quantile(summary.stat.study[[d]]$est, probs = 0.5))
+      tmp_qt <- quantile(summary.stat.study[[d]]$est, probs = c(0.1, 0.95))
       quantile_sm <- rbind(quantile_sm, tmp_qt)
     }
     if(verbose){
       message("++ Search for the best model for covariate of interest ", cov.name, ". ++")
     }
-
-    # return(list(summary.stat.study = summary.stat.study,
-    #             lasso.mat = lasso.mat,
-    #             quantile_sm = quantile_sm))
 
     meta.analysis <- meta.analysis(summary.stat.study = summary.stat.study,
                                    lasso.mat = lasso.mat,
@@ -127,7 +122,7 @@ melody.meta.summary <- function(summary.stats,
                                    NMAX = NMAX,
                                    verbose = verbose)
 
-    if(meta.analysis$boud.hit){
+    if(meta.analysis$boud.hit & is.null(tune.size.sequence) & is.null(tune.size.range)){
       if(tune.path == "gsection"){
         meta.analysis <- meta.analysis(summary.stat.study = summary.stat.study,
                                        lasso.mat = lasso.mat,
@@ -159,6 +154,7 @@ melody.meta.summary <- function(summary.stats,
       }
     }
     output.result[[cov.name]] <- meta.analysis$results.all
+    rm(list = c("summary.stat.study", "study.id.tmp", "lasso.mat", "meta.analysis"))
   }
 
   if(verbose){
