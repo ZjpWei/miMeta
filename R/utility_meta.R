@@ -170,14 +170,32 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
   L <- length(study.ID)
   tune.set <- list()
   GIC.tau <- c()
+
   #===========================================#
-  search.loc <- rep(-Inf, L)
-  tmp.result <- NULL
-  GIC.result <- Inf
+  ## Give a initial value for deltas with subset s = 1
+  tmp.subset <- search.subset.s(summary.stat.study = summary.stat.study,
+                                lasso.mat = lasso.mat,
+                                L = L,
+                                quantile_sm = quantile_sm,
+                                s.size = round(ncol(lasso.mat$X.enlarge) / 10),
+                                tmp.result = NULL,
+                                search.loc = rep(-Inf, L),
+                                GIC.result = Inf,
+                                initial.range = 0.2,
+                                tune.type = tune.type,
+                                tol = tol,
+                                NMAX = NMAX,
+                                verbose = FALSE)
+
+  tmp.result <- tmp.subset$tmp.result
+  GIC.result <- tmp.subset$GIC.result
+  search.loc <- tmp.subset$search.loc
+  #===========================================#
+
   if(tune.path == "sequence"){
     if(is.null(tune.size.sequence) & is.null(tune.size.range)){
       dims <- dim(lasso.mat$X.enlarge)
-      support.sizes <- 1:min(dims[1], round(dims / 2))
+      support.sizes <- 0:min(dims[1], round(dims / 2))
     }else if(!is.null(tune.size.sequence) & is.null(tune.size.range)){
       support.sizes <- tune.size.sequence
     }else if(is.null(tune.size.sequence) & !is.null(tune.size.range)){
@@ -195,7 +213,6 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
       pb <- txtProgressBar(max=length(support.sizes), style=3)
     }
     #=== Search best model by sequence ===#
-
     for(s.lambda in support.sizes){
       tmp.subset <- search.subset.s(summary.stat.study = summary.stat.study,
                                     lasso.mat = lasso.mat,
@@ -205,27 +222,12 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
                                     tmp.result = tmp.result,
                                     search.loc = search.loc,
                                     GIC.result = GIC.result,
-                                    initial.range = 0.2,
+                                    initial.range = 0.1,
                                     tune.type = tune.type,
                                     tol = tol,
                                     NMAX = NMAX,
                                     verbose = verbose)
 
-      if(s.lambda != sum(tmp.subset$tmp.result$mu.fit!=0)){
-        tmp.subset <- search.subset.s(summary.stat.study = summary.stat.study,
-                                      lasso.mat = lasso.mat,
-                                      L = L,
-                                      quantile_sm = quantile_sm,
-                                      s.size = s.lambda,
-                                      tmp.result = NULL,
-                                      search.loc = rep(-Inf, L),
-                                      GIC.result = Inf,
-                                      initial.range = 0.2,
-                                      tune.type = tune.type,
-                                      tol = tol,
-                                      NMAX = NMAX,
-                                      verbose = verbose)
-      }
       tmp.result <- tmp.subset$tmp.result
       GIC.result <- tmp.subset$GIC.result
       search.loc <- tmp.subset$search.loc
@@ -307,17 +309,18 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
     g.section <- 2 / (sqrt(5) + 1)
     g.sequence <- c()
     g.id <- 1
-    s.left.lambda <- round(s.1.lambda * g.section + s.2.lambda * (1 - g.section))
-    s.right.lambda <- round(s.1.lambda * (1 - g.section) + s.2.lambda * g.section)
-    for(s.lambda in c(s.1.lambda, s.left.lambda, s.right.lambda, s.2.lambda)){
+    s.left.lambda <- s.1.lambda * g.section + s.2.lambda * (1 - g.section)
+    s.right.lambda <- s.1.lambda * (1 - g.section) + s.2.lambda * g.section
+    lambda.seq <- round.fun(c(s.1.lambda, s.left.lambda, s.right.lambda, s.2.lambda))
+    for(s.lambda in lambda.seq){
       tmp.subset <- search.subset.s(summary.stat.study = summary.stat.study,
                                     lasso.mat = lasso.mat,
                                     L = L,
                                     quantile_sm = quantile_sm,
                                     s.size = s.lambda,
-                                    tmp.result = NULL,
-                                    search.loc = rep(-Inf, L),
-                                    GIC.result = Inf,
+                                    tmp.result = tmp.result,
+                                    search.loc = search.loc,
+                                    GIC.result = GIC.result,
                                     initial.range = 0.2,
                                     tune.type = tune.type,
                                     tol = tol,
@@ -335,34 +338,35 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
     s.2.GIC <- GIC.tau[4]
     while (loops) {
       s.all.GIC <- c(s.1.GIC, s.left.GIC, s.right.GIC, s.2.GIC)
-      if(s.1.GIC == min(s.all.GIC) & s.left.lambda - s.1.lambda <= 1){
-        min.result <- tune.set[[as.character(s.1.lambda)]]
+      if(s.1.GIC == min(s.all.GIC) & lambda.seq[2] - lambda.seq[1] <= 1){
+        min.result <- tune.set[[as.character(lambda.seq[1])]]
         loops <- FALSE
-      }else if(s.2.GIC == min(s.all.GIC) & s.2.lambda - s.right.lambda <= 1){
-        min.result <- tune.set[[as.character(s.2.lambda)]]
+      }else if(s.2.GIC == min(s.all.GIC) & lambda.seq[4] - lambda.seq[3] <= 1){
+        min.result <- tune.set[[as.character(lambda.seq[4])]]
         loops <- FALSE
-      }else if(s.left.GIC == min(s.all.GIC) & s.left.lambda - s.1.lambda <= 1 & s.right.lambda - s.left.lambda <= 1){
-        min.result <- tune.set[[as.character(s.left.lambda)]]
+      }else if(s.left.GIC == min(s.all.GIC) & lambda.seq[2] - lambda.seq[1] <= 1 & lambda.seq[3] - lambda.seq[2] <= 1){
+        min.result <- tune.set[[as.character(lambda.seq[2])]]
         loops <- FALSE
-      }else if(s.right.GIC == min(s.all.GIC) & s.right.lambda - s.left.lambda <= 1 & s.2.lambda - s.right.lambda <= 1){
-        min.result <- tune.set[[as.character(s.right.lambda)]]
+      }else if(s.right.GIC == min(s.all.GIC) & lambda.seq[3] - lambda.seq[2] <= 1 & lambda.seq[4] - lambda.seq[3] <= 1){
+        min.result <- tune.set[[as.character(lambda.seq[3])]]
         loops <- FALSE
       }else{
         if(min(s.all.GIC[1:2]) == min(s.all.GIC)){
           #=== minimize GIC at s.1 or s.left ===#
-          s.2.lambda <- s.right.lambda
+          lambda.seq[4] <- lambda.seq[3]
           s.2.GIC <- s.right.GIC
-          s.right.lambda <- s.left.lambda
+          lambda.seq[3] <- lambda.seq[2]
           s.right.GIC <- s.left.GIC
-          s.left.lambda <- round(s.1.lambda * g.section + s.2.lambda * (1 - g.section))
+          lambda.seq[2] <- lambda.seq[1] * g.section + lambda.seq[4] * (1 - g.section)
+          lambda.seq <- round.fun(lambda.seq)
           tmp.subset <- search.subset.s(summary.stat.study = summary.stat.study,
                                         lasso.mat = lasso.mat,
                                         L = L,
                                         quantile_sm = quantile_sm,
-                                        s.size = s.left.lambda,
-                                        tmp.result = NULL,
-                                        search.loc = rep(-Inf, L),
-                                        GIC.result = Inf,
+                                        s.size = lambda.seq[2],
+                                        tmp.result = tmp.result,
+                                        search.loc = search.loc,
+                                        GIC.result = GIC.result,
                                         initial.range = 0.2,
                                         tune.type = tune.type,
                                         tol = tol,
@@ -371,27 +375,28 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
           tmp.result <- tmp.subset$tmp.result
           GIC.result <- tmp.subset$GIC.result
           search.loc <- tmp.subset$search.loc
-          if(!as.character(s.left.lambda) %in% names(tune.set)){
-            tune.set[[as.character(s.left.lambda)]] <- tmp.result
+          if(!as.character(lambda.seq[2]) %in% names(tune.set)){
+            tune.set[[as.character(lambda.seq[2])]] <- tmp.result
             s.left.GIC <- GIC.cal(result = tmp.result, tune.type = tune.type)
             GIC.tau <- c(GIC.tau, s.left.GIC)
-            g.sequence <- c(g.sequence, s.left.lambda)
+            g.sequence <- c(g.sequence, lambda.seq[2])
           }
         }else if(min(s.all.GIC[3:4]) == min(s.all.GIC)){
           #=== minimize GIC at s.right or s.2 ===#
-          s.1.lambda <- s.left.lambda
+          lambda.seq[1] <- lambda.seq[2]
           s.1.GIC <- s.left.GIC
-          s.left.lambda <- s.right.lambda
+          lambda.seq[2] <- lambda.seq[3]
           s.left.GIC <- s.right.GIC
-          s.right.lambda <- round(s.1.lambda * (1 - g.section) + s.2.lambda * g.section)
+          lambda.seq[3] <- lambda.seq[1] * (1 - g.section) + lambda.seq[4] * g.section
+          lambda.seq <- round.fun(lambda.seq)
           tmp.subset <- search.subset.s(summary.stat.study = summary.stat.study,
                                         lasso.mat = lasso.mat,
                                         L = L,
                                         quantile_sm = quantile_sm,
-                                        s.size = s.right.lambda,
-                                        tmp.result = NULL,
-                                        search.loc = rep(-Inf, L),
-                                        GIC.result = Inf,
+                                        s.size = lambda.seq[3],
+                                        tmp.result = tmp.result,
+                                        search.loc = search.loc,
+                                        GIC.result = GIC.result,
                                         initial.range = 0.2,
                                         tune.type = tune.type,
                                         tol = tol,
@@ -400,11 +405,11 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
           tmp.result <- tmp.subset$tmp.result
           GIC.result <- tmp.subset$GIC.result
           search.loc <- tmp.subset$search.loc
-          if(!as.character(s.right.lambda) %in% names(tune.set)){
-            tune.set[[as.character(s.right.lambda)]] <- tmp.result
+          if(!as.character(lambda.seq[3]) %in% names(tune.set)){
+            tune.set[[as.character(lambda.seq[3])]] <- tmp.result
             s.right.GIC <- GIC.cal(result = tmp.result, tune.type = tune.type)
             GIC.tau <- c(GIC.tau, s.right.GIC)
-            g.sequence <- c(g.sequence, s.right.lambda)
+            g.sequence <- c(g.sequence, lambda.seq[3])
           }
         }
         g.id <- g.id + 1
@@ -457,6 +462,21 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
   return(list(results.all = results.all, boud.hit = boud.hit))
 }
 
+round.fun <- function(lambda.seq){
+  if(length(lambda.seq) != 4){
+    stop("Searching lambda sequence length is different.")
+  }
+  s.1.lambda <- lambda.seq[1]
+  s.left.lambda <- lambda.seq[2]
+  s.right.lambda <- lambda.seq[3]
+  s.2.lambda <- lambda.seq[4]
+
+  s.left.lambda <- floor(s.left.lambda)
+  s.right.lambda <- ceiling(s.right.lambda)
+
+  return(c(s.1.lambda, s.left.lambda, s.right.lambda, s.2.lambda))
+}
+
 ################################### Powell's method ###########################
 f_xy <- function(x, y, GIC_x, GIC_y){
   return((GIC_y - GIC_x) / (y - x))
@@ -499,27 +519,28 @@ search.subset.s <- function(summary.stat.study,
   loop.time <- 0
   loop.mat <- diag(L)
   if(is.null(tmp.result)){
-    for(l in 1:L){
-      tmp.search <- search.ref.loc(summary.stat.study = summary.stat.study,
-                                   lasso.mat = lasso.mat,
-                                   study.l = loop.mat[l,],
-                                   quantile_sm = quantile_sm,
-                                   search.prop = search.loc,
-                                   lambda = s.size,
-                                   result = tmp.result,
-                                   initial.range = initial.range,
-                                   tune.type = tune.type,
-                                   tol = tol,
-                                   verbose = verbose)
-
-      GIC.result <- tmp.search$study.min.GIC
-      tmp.result <- tmp.search$result
-      search.loc <- tmp.search$study.min
-    }
+    search.loc <- rep(0.5,L)
   }
+  for(l in 1:L){
+    tmp.search <- search.ref.loc(summary.stat.study = summary.stat.study,
+                                 lasso.mat = lasso.mat,
+                                 study.l = loop.mat[l,],
+                                 quantile_sm = quantile_sm,
+                                 search.prop = search.loc,
+                                 lambda = s.size,
+                                 result = tmp.result,
+                                 initial.range = initial.range,
+                                 tune.type = tune.type,
+                                 tol = tol,
+                                 verbose = verbose)
+    tmp.result <- tmp.search$result
+    GIC.result.tmp <- tmp.search$study.min.GIC
+    search.loc.tmp <- tmp.search$study.min
+  }
+
   while(loop){
-    search.loc.tmp <- search.loc
-    GIC.result.tmp <- GIC.result
+    # search.loc.tmp <- search.loc
+    # GIC.result.tmp <- GIC.result
     for(l in 1:L){
       if(max(abs(search.loc - search.loc.tmp)) >= 1e-3){
         tmp.search <- search.ref.loc(summary.stat.study = summary.stat.study,
@@ -552,7 +573,6 @@ search.subset.s <- function(summary.stat.study,
         tmp.result <- tmp.search$result
       }
     }
-
     ## Search on the new direction
     if(max(abs(search.loc - search.loc.tmp)) > tol){
       loop.new.vec <- (search.loc - search.loc.tmp) / max(abs(search.loc - search.loc.tmp))
@@ -591,6 +611,7 @@ search.subset.s <- function(summary.stat.study,
       }
       GIC.result <- GIC.result.tmp
       search.loc <- search.loc.tmp
+      tmp.result <- tmp.search$result
     }
   }
   return(list(tmp.result = tmp.result, GIC.result = GIC.result, search.loc = search.loc))

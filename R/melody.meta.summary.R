@@ -101,7 +101,7 @@ melody.meta.summary <- function(summary.stats,
     quantile_sm <- NULL
     # delta.median <- NULL
     for(d in study.id.tmp){
-      tmp_qt <- quantile(summary.stat.study[[d]]$est, probs = c(0.1, 0.95))
+      tmp_qt <- quantile(summary.stat.study[[d]]$est, probs = c(0, 1))
       quantile_sm <- rbind(quantile_sm, tmp_qt)
     }
     if(verbose){
@@ -122,6 +122,7 @@ melody.meta.summary <- function(summary.stats,
                                    NMAX = NMAX,
                                    verbose = verbose)
 
+    # return(meta.analysis)
     if(meta.analysis$boud.hit & is.null(tune.size.sequence) & is.null(tune.size.range)){
       if(tune.path == "gsection"){
         meta.analysis <- meta.analysis(summary.stat.study = summary.stat.study,
