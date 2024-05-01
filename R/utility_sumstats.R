@@ -271,12 +271,6 @@ reg.fit = function(dat,
       }else{
         stop(paste0(as.character(ref)," isn't in the data.\n") )
       }
-      feature.lst <- feature.ID[rank(maximum.CV, ties.method = "random") <= 10]
-      if(!(ref %in% feature.lst)){
-        warning(paste0("The specified reference ", ref, " in study ", feature.ID,
-                       " has a large variation. Consider choosing a reference from this list for more stable results: ",
-                       paste(feature.lst, collapse = ","), "."))
-      }
     }else{
       if(length(ref) != length(study.ID)){
         stop("The reference taxa numbers don't match the study numbers.\n")
@@ -284,6 +278,15 @@ reg.fit = function(dat,
       if(!all(ref %in% feature.ID)){
         stop("some taxa aren't in the data.\n")
       }
+    }
+    if(length(study.ID) == 1){
+      feature.lst <- feature.ID[rank(maximum.CV, ties.method = "random") <= 10]
+      if(!(ref %in% feature.lst)){
+        warning(paste0("The specified reference ", ref, " in study ", study.ID,
+                       " has a large variation. Consider choosing a reference from this list for more stable results: ",
+                       paste(feature.lst, collapse = ","), "."))
+      }
+    }else{
       for(d in study.ID){
         feature.lst <- feature.ID[rank(maximum.CV[d,], ties.method = "random") <= 10]
         if(!(ref[d] %in% feature.lst)){

@@ -123,7 +123,8 @@ for(d in unique(CRC_meta$Study)){
   covariate.interest[[d]] <- data.frame(disease = disease)
 }
 
-meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest)
+meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest,
+                      ref = "Coprococcus catus [ref_mOTU_v2_4874]")
 }
 
 }

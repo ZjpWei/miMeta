@@ -78,11 +78,8 @@ for(d in c("FR-CRC", "DE-CRC")){
   covariate.interest[[d]] <- data.frame(disease = disease)
 }
 
-refs <- c("Coprococcus catus [ref_mOTU_v2_4874]", "Coprococcus catus [ref_mOTU_v2_4874]")
-names(refs) <- c("FR-CRC", "DE-CRC")
 meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest, 
-                      ref = refs, 
-                      verbose = TRUE)
+                      ref = "Coprococcus catus [ref_mOTU_v2_4874]", verbose = TRUE)
 ```
 
 The first figure above shows the number of features shared among studies (here, all 266 species are present in both studies), and the second figure shows the meta-coefficient estimates for the selected microbial signatures for CRC.  

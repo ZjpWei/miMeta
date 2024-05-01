@@ -23,11 +23,8 @@ for(d in c("FR-CRC", "DE-CRC")){
   covariate.interest[[d]] <- data.frame(disease = disease)
 }
 
-refs <- c("Coprococcus catus [ref_mOTU_v2_4874]", "Coprococcus catus [ref_mOTU_v2_4874]")
-names(refs) <- c("FR-CRC", "DE-CRC")
 meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest, 
-                      ref = refs, 
-                      verbose = TRUE)
+                      ref = "Coprococcus catus [ref_mOTU_v2_4874]", verbose = TRUE)
 
 ## -----------------------------------------------------------------------------
 head(data.frame(coef = meta.result$disease$coef), n = 20)

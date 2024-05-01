@@ -36,7 +36,7 @@
 #'   rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
 #' }
 #'
-#' null.obj <- melody.null.model(rel.abd = rel.abd)
+#' null.obj <- melody.null.model(rel.abd = rel.abd, ref = "Coprococcus catus [ref_mOTU_v2_4874]")
 #' }
 #'
 
