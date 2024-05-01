@@ -223,7 +223,7 @@ melody.meta.summary <- function(summary.stats,
                 panel.border = element_rect(colour = "black", fill=NA),
                 legend.position = "right",
                 plot.title = element_text(hjust = 0.5)) +
-          ggtitle(paste0("Absolute-abundance coefficient estimates of the selected microbial features for ", cov.name)) +
+          ggtitle(paste0("AA coefficient estimates of the selected \n microbial features for ", cov.name)) +
           scale_x_discrete(position='bottom') +
           scale_fill_manual(values=c('lightgrey', 'darkgrey'), guide="none") +
           geom_hline(aes(yintercept = 0),colour="#990000", linetype="dashed")
