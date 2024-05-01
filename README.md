@@ -36,16 +36,27 @@ The following are minimal examples on functionalities of `miMeta`. For more deta
 ```{r}
 library("miMeta")
 
-data("CRC_abd", "meta", package = "miMeta")
+data("CRC_data")
+CRC_abd <- CRC_data$CRC_abd
+CRC_meta <- CRC_data$CRC_meta
+
+rel.abd <- list()
+covariate.interest <- list()
+for(d in c("FR-CRC", "DE-CRC")){
+  rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
+  disease <- as.numeric(CRC_meta$Group[CRC_meta$Study == d] == "CRC")
+  names(disease) <- CRC_meta$Sample_ID[CRC_meta$Study == d]
+  covariate.interest[[d]] <- data.frame(disease = disease)
+}
 ```
 
 * Perform meta-analysis
 ```{r}
-meta.result <- melody(rel.abd = CRC_abd,
-                      sample.data = meta,
-                      sample.id = "Sample_ID",
-                      study = "Study",
-                      disease = "Group")
+refs <- c("Coprococcus catus [ref_mOTU_v2_4874]", "Coprococcus catus [ref_mOTU_v2_4874]")
+names(refs) <- c("FR-CRC", "DE-CRC")
+meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest, 
+                      ref = refs, 
+                      verbose = TRUE)
 ```
 
 ## Issues tracker
