@@ -133,7 +133,12 @@ Microbiome association studies can involve a large number of covariates of inter
 # github into R https://github.com/ZjpWei/Melody/raw/main/Metabolite.rda
 load(file = url("https://github.com/ZjpWei/Melody/raw/main/Metabolite.rda"))
 
-# get null model
+# Change genura names
+for(d in names(otu_data_lst)){
+  colnames(otu_data_lst[[d]]) <-  gsub(".*;g__", "", colnames(otu_data_lst[[d]]))
+}
+
+# Get null model
 null.obj <- melody.null.model(rel.abd = otu_data_lst, covariate.adjust = covariates_adjust_lst)
 
 # Get summary statistics
@@ -160,7 +165,7 @@ sessionInfo()
 ```
 
 # Reference
-1. Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis. Submitted.
+1. Wei Z, Chen G, Tang ZZ. Melody: Meta-analysis of Microbiome Association Studies for Discovering Generalizable Microbial Signatures. Submitted.
 
 2. Wirbel, Jakob et al. Meta-analysis of fecal metagenomes reveals global microbial signatures that are specific for colorectal cancer. 
 

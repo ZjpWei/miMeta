@@ -128,7 +128,7 @@ meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest
 
 }
 \references{
-Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis. Submitted.
+Wei Z, Chen G, Tang ZZ. Melody: Meta-analysis of Microbiome Association Studies for Discovering Generalizable Microbial Signatures. Submitted.
 }
 \seealso{
 \code{\link{melody.get.summary}},

@@ -56,7 +56,12 @@ meta.result.2 <- melody.meta.summary(summary.stats = summary.stats.all, verbose 
 # github into R https://github.com/ZjpWei/Melody/raw/main/Metabolite.rda
 load(file = url("https://github.com/ZjpWei/Melody/raw/main/Metabolite.rda"))
 
-# get null model
+# Change genura names
+for(d in names(otu_data_lst)){
+  colnames(otu_data_lst[[d]]) <-  gsub(".*;g__", "", colnames(otu_data_lst[[d]]))
+}
+
+# Get null model
 null.obj <- melody.null.model(rel.abd = otu_data_lst, covariate.adjust = covariates_adjust_lst)
 
 # Get summary statistics

@@ -165,7 +165,7 @@ sessionInfo()
 ```
 
 # Reference
-1. Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis. Submitted.
+1. Wei Z, Chen G, Tang ZZ. Melody: Meta-analysis of Microbiome Association Studies for Discovering Generalizable Microbial Signatures. Submitted.
 
 2. Wirbel, Jakob et al. Meta-analysis of fecal metagenomes reveals global microbial signatures that are specific for colorectal cancer. 
 

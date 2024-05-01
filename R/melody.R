@@ -67,7 +67,7 @@
 #' (i.e. the number of microbial features selected) and delta's which are introduced to recover the
 #' absolute-abundance coefficients from the relative-abundance coefficients. (details in reference Wei et al.)
 #'
-#' @references Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis. Submitted.
+#' @references Wei Z, Chen G, Tang ZZ. Melody: Meta-analysis of Microbiome Association Studies for Discovering Generalizable Microbial Signatures. Submitted.
 #'
 #' @seealso \code{\link{melody.get.summary}},
 #' \code{\link{melody.meta.summary}},
