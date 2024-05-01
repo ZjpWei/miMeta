@@ -8,7 +8,7 @@ See following items for more details:
 
 * [`miMeta` vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
 
-* Article: Wei Z, Chen G, Tang ZZ. Melody identifies generalizable microbial signatures in microbiome association meta-analysis.
+* Article: Wei Z, Chen G, Tang ZZ. Melody: Meta-analysis of Microbiome Association Studies for Discovering Generalizable Microbial Signatures.
 
 ## Author
 
@@ -52,11 +52,8 @@ for(d in c("FR-CRC", "DE-CRC")){
 
 * Perform meta-analysis
 ```{r}
-refs <- c("Coprococcus catus [ref_mOTU_v2_4874]", "Coprococcus catus [ref_mOTU_v2_4874]")
-names(refs) <- c("FR-CRC", "DE-CRC")
 meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest, 
-                      ref = refs, 
-                      verbose = TRUE)
+                      ref = "Coprococcus catus [ref_mOTU_v2_4874]")
 ```
 
 ## Issues tracker
