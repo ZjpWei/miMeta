@@ -52,10 +52,8 @@ for(d in c("FR-CRC", "DE-CRC")){
 
 * Perform meta-analysis
 ```{r}
-refs <- c("Coprococcus catus [ref_mOTU_v2_4874]", "Coprococcus catus [ref_mOTU_v2_4874]")
-names(refs) <- c("FR-CRC", "DE-CRC")
 meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest, 
-                      ref = refs, verbose = TRUE)
+                      ref = "Coprococcus catus [ref_mOTU_v2_4874]")
 ```
 
 ## Issues tracker
