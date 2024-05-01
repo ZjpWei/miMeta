@@ -155,7 +155,6 @@ melody.meta.summary <- function(summary.stats,
       }
     }
     output.result[[cov.name]] <- meta.analysis$results.all
-    rm(list = c("summary.stat.study", "study.id.tmp", "lasso.mat", "meta.analysis"))
   }
 
   if(verbose){

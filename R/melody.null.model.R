@@ -123,24 +123,13 @@ melody.null.model <- function(rel.abd,
             warning(paste0("NA presents in `", cov_name, "`, please check sample.data."))
           }
         }
-        # sample.lst <- Sample.info[[d]]$rm.sample.idx
-        # for(l in 1:length(sample.lst)){
-        #   rm.sample.id <- sample.lst[[l]]
-        #   if(length(rm.sample.id) == 0){
-             dat[[d]] <- list(Y = Y.pool, X = X.pool)
-        #  }else{
-        #     dat[[d]] <- list(Y = Y.pool[-rm.sample.id,], X = X.pool[-rm.sample.id,])
-        #  }
-        # }
+        dat[[d]] <- list(Y = Y.pool, X = X.pool)
       }
     }
   }
-
   #=== Generate summary statistics ===#
-  reg.fit.result <- reg.fit(dat = dat,
-                            filter.threshold = prev.filter,
-                            ref = ref,
-                            parallel.core = parallel.core)
+  reg.fit.result <- reg.fit(dat = dat, filter.threshold = prev.filter,
+                            ref = ref, parallel.core = parallel.core)
 
   for(d in study.ID){
     reg.fit.result[[d]]$rm.sample.idx <- rm.sample.idx[[d]]

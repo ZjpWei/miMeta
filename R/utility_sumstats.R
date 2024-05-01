@@ -70,13 +70,31 @@ Get_summary <- function(summary.stat.null,
                         Sample.info,
                         cov.type,
                         G,
-                        shrehold,
+                        parallel.core,
                         verbose){
 
   #=== Cluster samples from same subject ===#
   study.ID <- names(summary.stat.null)
-  summary.stat.study <- list()
-  for(d in study.ID){
+
+  cores <- detectCores()
+  if(is.null(parallel.core)){
+    parallel.core <- max(cores[1]-1, 1)
+  }else{
+    if(parallel.core >= cores){
+      warning("The number of cores excceed the capacity.\n")
+      parallel.core <- max(cores[1]-1, 1)
+    }
+    if(parallel.core <= 0 | as.integer(parallel.core) != parallel.core){
+      stop("The number of cores must be a positive interger.\n")
+    }
+  }
+  if(verbose){
+    message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
+  }
+
+  cl <- makeCluster(parallel.core[1])
+  registerDoParallel(cl)
+  summary.stat.study <- foreach(d = study.ID, .packages = "brglm2") %dopar% {
     cov.int.lst <- Sample.info[[d]]$rm.sample.cov
     cov.int.id <- Sample.info[[d]]$rm.sample.idx
     cov.int.nm <- colnames(covariate.interest[[d]])
@@ -155,7 +173,7 @@ Get_summary <- function(summary.stat.null,
         loop_mat <- matrix(0, 3, 3)
         rownames(loop_mat) <- c("lambda", "Pearson.R","signal")
         loop_mat["lambda",] <- c(0, 0.05, 0.8)
-        loop_mat <- Calc.pearson(loop_mat, R_lst, sample.id, lambda, G, shrehold)
+        loop_mat <- Calc.pearson(loop_mat, R_lst, sample.id, lambda, G, shrehold = 1e-2)
         lambda <- (loop_mat["lambda",loop_mat["Pearson.R",] == max(loop_mat["Pearson.R",])])[1]
         colnames(loop_mat) <- paste0("Tn", as.character(1:ncol(loop_mat)))
         if(verbose){
@@ -187,8 +205,23 @@ Get_summary <- function(summary.stat.null,
       est.mat[rownames(ests), cov.name] <- ests[,1]
       cov.mat[rownames(ests), cov.name] <- Sigma_lambda
     }
-    summary.stat.study[[d]] <- list(est = est.mat, var = cov.mat, n = n)
+    summary.stat.study.one <- list(est = est.mat, var = cov.mat, n = n, para.id = d)
+
+    #=== output ===#
+    summary.stat.study.one
   }
+  #=== stop cluster ===#
+  stopCluster(cl)
+
+  #=== reorder output ===#
+  order.vec <- NULL
+  for(ll in 1:length(summary.stat.study)){
+    order.vec <- c(order.vec, summary.stat.study[[ll]]$para.id)
+    summary.stat.study[[ll]]$para.id <- NULL
+  }
+  names(summary.stat.study) <- order.vec
+  summary.stat.study <- summary.stat.study[study.ID]
+
   return(summary.stat.study)
 }
 
@@ -268,30 +301,30 @@ reg.fit = function(dat,
     idx = c(setdiff(colnames(dat[[d]]$Y), ref[d]), ref[d])
     data.relative[[d]] <- list(Y = dat[[d]]$Y[,idx], X = dat[[d]]$X)
   }
-  #=== Generate summary statistics ===#
 
-  # cores <- detectCores()
-  # if(is.null(parallel.core)){
-  #   parallel.core <- cores[1]-1
-  # }else{
-  #   if(parallel.core >= cores){
-  #     warning("The number of cores excceed the capacity.\n")
-  #     parallel.core <- cores[1]-1
-  #   }
-  #   if(parallel.core <= 0 | as.integer(parallel.core) != parallel.core){
-  #     stop("The number of cores must be a positive interger.\n")
-  #   }
-  # }
-  # if(verbose){
-  #   message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
-  # }
+  #=== Generate summary statistics ===#
+  cores <- detectCores()
+  if(is.null(parallel.core)){
+    parallel.core <- max(cores[1]-1, 1)
+  }else{
+    if(parallel.core >= cores){
+      warning("The number of cores excceed the capacity.\n")
+      parallel.core <- max(cores[1]-1, 1)
+    }
+    if(parallel.core <= 0 | as.integer(parallel.core) != parallel.core){
+      stop("The number of cores must be a positive interger.\n")
+    }
+  }
+  if(verbose){
+    message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
+  }
 
   #=== Setup parallel jobs ===#
-  # cl <- makeCluster(parallel.core[1])
-  # registerDoParallel(cl)
-  # reg.fit <- foreach(l = 1:L, .packages = "brglm2") %dopar% {
-  reg.fit <- list()
-  for(d in study.ID){
+  cl <- makeCluster(parallel.core[1])
+  registerDoParallel(cl)
+  reg.fit <- foreach(d = study.ID, .packages = "brglm2") %dopar% {
+  # reg.fit <- list()
+  # for(d in study.ID){
     Y.sub <- data.relative[[d]]$Y
     X.sub <- cbind(1, data.relative[[d]]$X)
     colnames(X.sub) <- c("Intercept", paste0("V_", as.character(1:(ncol(X.sub)-1))))
@@ -323,7 +356,6 @@ reg.fit = function(dat,
     N <- rowSums(Y.sub)
     s.i.mat <- NULL
     pp_mat <- NULL
-    # V.i.lst <- list()
     for(i in 1:length(N)){
       dd <- colSums(matrix(rep(X.sub[i,], ncol(Y.sub)-1), nrow = ncol(X.sub)) * t(est), na.rm = TRUE)
       pp <- c(exp(dd - max(dd)),1/exp(max(dd)))
@@ -337,18 +369,19 @@ reg.fit = function(dat,
     reg.fit.one <- list(ref = ref[d], p = pp_mat, res = s.i.mat, N = N, X = X.sub, para.id = d)
 
     #=== output ===#
-    reg.fit[[d]] <- reg.fit.one
+    reg.fit.one
   }
   #=== stop cluster ===#
-  # stopCluster(cl)
+  stopCluster(cl)
 
   #=== reorder output ===#
-  #order.vec <- c()
-  for(d in study.ID){
-    #order.vec <- c(order.vec, reg.fit[[l]]$para.id)
-    reg.fit[[d]]$para.id <- NULL
+  order.vec <- NULL
+  for(ll in 1:length(reg.fit)){
+    order.vec <- c(order.vec, reg.fit[[ll]]$para.id)
+    reg.fit[[ll]]$para.id <- NULL
   }
-  #reg.fit <- reg.fit[order(order.vec)]
+  names(reg.fit) <- order.vec
+  reg.fit <- reg.fit[study.ID]
   return(reg.fit)
 }
 
