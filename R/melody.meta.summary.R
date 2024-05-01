@@ -196,7 +196,7 @@ melody.meta.summary <- function(summary.stats,
     }
 
     selected.num <- sort(unlist(lapply(output.result, function(d){sum(d$coef!=0)})), decreasing = TRUE)
-    top.cov.name <- names(selected.num)[1:min(4, length(selected.num))]
+    top.cov.name <- names(selected.num)[1:min(5, length(selected.num))]
 
     for(cov.name in top.cov.name){
       if(sum(output.result[[cov.name]]$coef!=0) > 0){

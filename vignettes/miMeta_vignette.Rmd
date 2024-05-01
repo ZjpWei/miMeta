@@ -30,9 +30,9 @@ editor_options:
 Install package from GitHub.
 
 ```{r getPackage, echo=TRUE}
-# if(!require("miMeta", quietly = TRUE)){
-#   devtools::install_github("ZjpWei/miMeta")
-# }
+if(!require("miMeta", quietly = TRUE)){
+  devtools::install_github("ZjpWei/miMeta")
+}
 ```
 
 Load the packages. 
@@ -128,15 +128,10 @@ The meta-analysis results generated this way are identical to those generated in
 Microbiome association studies can involve a large number of covariates of interest (e.g., omics variables). We show here how to  use Melody to meta-analyze eight microbiome-metabolome association studies [3]. In these eight studies, we have 101 genera and 450 metabolites and we are interested in identifying genera that are associated with individual metabolites. This analysis takes approximately 20 minutes.
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-# Load metabolome data: 
+# Load metabolite data: 
 # You may see the following website on how to directly load data from 
-# github into R https://github.com/ZjpWei/Melody/data/
-
-load("~/Documents/Researches/Package_build/metabolome_data.Rdata")
-otu_data_lst <- metabolome_data$otu_data_lst
-cmpd_data_lst <- metabolome_data$cmpd_data_lst
-covariates_adjust_lst <- metabolome_data$covariates_adjust_lst
-cluster_data_lst <- metabolome_data$cluster_data_lst
+# github into R https://github.com/ZjpWei/Melody/raw/main/Metabolite.rda
+load(file = url("https://github.com/ZjpWei/Melody/raw/main/Metabolite.rda"))
 
 # get null model
 null.obj <- melody.null.model(rel.abd = otu_data_lst, covariate.adjust = covariates_adjust_lst)
