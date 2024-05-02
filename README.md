@@ -16,7 +16,7 @@ Zhoujingpeng Wei @[Tang Lab](https://tangzheng1.github.io/tanglab/)
 
 Department of Biostatistics and Medical Informatics, University of Wisconsin-Madison
 
-## System requirments
+## System requirements
 
 The `miMeta` package (version 0.1.0) should be compatible with Windows, Mac, and Linux operating systems.
 
