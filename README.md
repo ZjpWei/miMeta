@@ -16,6 +16,14 @@ Zhoujingpeng Wei @[Tang Lab](https://tangzheng1.github.io/tanglab/)
 
 Department of Biostatistics and Medical Informatics, University of Wisconsin-Madison
 
+## System requirments
+
+The `miMeta` package (version 0.1.0) should be compatible with Windows, Mac, and Linux operating systems.
+
+Before setting up the package, users should have R version 4.3.0 or higher.
+
+The package depends on the following R packages: `Mass`, `brglm2`, `abess`, `UpSetR`, `dplyr`, `ggplot2`, `doParallel`, `parallel` and `foreach`.
+
 ## Installation guide
 
 Install package from github.
