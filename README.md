@@ -16,7 +16,7 @@ Zhoujingpeng Wei @[Tang Lab](https://tangzheng1.github.io/tanglab/)
 
 Department of Biostatistics and Medical Informatics, University of Wisconsin-Madison
 
-## Installation
+## Installation guide
 
 Install package from github.
 ```{r}
