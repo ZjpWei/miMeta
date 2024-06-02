@@ -92,9 +92,11 @@ Get_summary <- function(summary.stat.null,
     message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
   }
 
-  cl <- makeCluster(parallel.core[1])
-  registerDoParallel(cl)
-  summary.stat.study <- foreach(d = study.ID, .packages = "brglm2") %dopar% {
+  # cl <- makeCluster(parallel.core[1])
+  # registerDoParallel(cl)
+  summary.stat.study <- list()
+  for(d in study.ID){
+  # summary.stat.study <- foreach(d = study.ID, .packages = "brglm2") %dopar% {
     cov.int.lst <- Sample.info[[d]]$rm.sample.cov
     cov.int.id <- Sample.info[[d]]$rm.sample.idx
     cov.int.nm <- colnames(covariate.interest[[d]])
@@ -208,19 +210,19 @@ Get_summary <- function(summary.stat.null,
     summary.stat.study.one <- list(est = est.mat, var = cov.mat, n = n, para.id = d)
 
     #=== output ===#
-    summary.stat.study.one
+    summary.stat.study[[d]] <- summary.stat.study.one
   }
   #=== stop cluster ===#
-  stopCluster(cl)
+  # stopCluster(cl)
 
   #=== reorder output ===#
-  order.vec <- NULL
+  # order.vec <- NULL
   for(ll in 1:length(summary.stat.study)){
-    order.vec <- c(order.vec, summary.stat.study[[ll]]$para.id)
+    # order.vec <- c(order.vec, summary.stat.study[[ll]]$para.id)
     summary.stat.study[[ll]]$para.id <- NULL
   }
-  names(summary.stat.study) <- order.vec
-  summary.stat.study <- summary.stat.study[study.ID]
+  # names(summary.stat.study) <- order.vec
+  # summary.stat.study <- summary.stat.study[study.ID]
 
   return(summary.stat.study)
 }
@@ -323,11 +325,11 @@ reg.fit = function(dat,
   }
 
   #=== Setup parallel jobs ===#
-  cl <- makeCluster(parallel.core[1])
-  registerDoParallel(cl)
-  reg.fit <- foreach(d = study.ID, .packages = "brglm2") %dopar% {
-  # reg.fit <- list()
-  # for(d in study.ID){
+  # cl <- makeCluster(parallel.core[1])
+  # registerDoParallel(cl)
+  # reg.fit <- foreach(d = study.ID, .packages = "brglm2") %dopar% {
+  reg.fit <- list()
+  for(d in study.ID){
     Y.sub <- data.relative[[d]]$Y
     X.sub <- cbind(1, data.relative[[d]]$X)
     colnames(X.sub) <- c("Intercept", paste0("V_", as.character(1:(ncol(X.sub)-1))))
@@ -372,19 +374,19 @@ reg.fit = function(dat,
     reg.fit.one <- list(ref = ref[d], p = pp_mat, res = s.i.mat, N = N, X = X.sub, para.id = d)
 
     #=== output ===#
-    reg.fit.one
+    reg.fit[[d]] <- reg.fit.one
   }
   #=== stop cluster ===#
-  stopCluster(cl)
+  # stopCluster(cl)
 
   #=== reorder output ===#
-  order.vec <- NULL
+  # order.vec <- NULL
   for(ll in 1:length(reg.fit)){
-    order.vec <- c(order.vec, reg.fit[[ll]]$para.id)
+    # order.vec <- c(order.vec, reg.fit[[ll]]$para.id)
     reg.fit[[ll]]$para.id <- NULL
   }
-  names(reg.fit) <- order.vec
-  reg.fit <- reg.fit[study.ID]
+  # names(reg.fit) <- order.vec
+  # reg.fit <- reg.fit[study.ID]
   return(reg.fit)
 }
 
