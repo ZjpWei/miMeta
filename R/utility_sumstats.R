@@ -308,21 +308,21 @@ reg.fit = function(dat,
   }
 
   #=== Generate summary statistics ===#
-  cores <- detectCores()
-  if(is.null(parallel.core)){
-    parallel.core <- max(cores[1]-1, 1)
-  }else{
-    if(parallel.core >= cores){
-      warning("The number of cores excceed the capacity.\n")
-      parallel.core <- max(cores[1]-1, 1)
-    }
-    if(parallel.core <= 0 | as.integer(parallel.core) != parallel.core){
-      stop("The number of cores must be a positive interger.\n")
-    }
-  }
-  if(verbose){
-    message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
-  }
+  # cores <- detectCores()
+  # if(is.null(parallel.core)){
+  #   parallel.core <- max(cores[1]-1, 1)
+  # }else{
+  #   if(parallel.core >= cores){
+  #     warning("The number of cores excceed the capacity.\n")
+  #     parallel.core <- max(cores[1]-1, 1)
+  #   }
+  #   if(parallel.core <= 0 | as.integer(parallel.core) != parallel.core){
+  #     stop("The number of cores must be a positive interger.\n")
+  #   }
+  # }
+  # if(verbose){
+  #   message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
+  # }
 
   #=== Setup parallel jobs ===#
   # cl <- makeCluster(parallel.core[1])
@@ -416,7 +416,7 @@ GetGlm <- function(data.beta, X.idx){
     for(k in 1:(K-1)){
       tmp = cbind(data.beta$Y[,K], data.beta$Y[,k])
       N = rowSums(tmp)
-      idx.subj = which(N>0)
+      idx.subj = which(N>1)
       tmp.X <- data.beta$X[idx.subj,]
       X.idx.id <- colnames(tmp.X)[X.idx]
       # Test the singularity
