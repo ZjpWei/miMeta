@@ -416,7 +416,7 @@ GetGlm <- function(data.beta, X.idx){
     for(k in 1:(K-1)){
       tmp = cbind(data.beta$Y[,K], data.beta$Y[,k])
       N = rowSums(tmp)
-      idx.subj = which(N>1)
+      idx.subj = which(N>0)
       tmp.X <- data.beta$X[idx.subj,]
       X.idx.id <- colnames(tmp.X)[X.idx]
       # Test the singularity
