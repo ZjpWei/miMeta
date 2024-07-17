@@ -63,8 +63,6 @@ melody.get.summary <- function(null.obj,
     ref <- c(ref, null.obj[[d]]$ref)
     if(is.null(colnames(covariate.interest[[d]]))){
       stop("covariate.interest is not a matrix with column names. Please check your data.")
-    }else{
-      covariate.interest[[d]] <- data.frame(covariate.interest[[d]])
     }
   }
   names(ref) <- study.ID
