@@ -88,7 +88,6 @@ melody.get.summary <- function(null.obj,
     if(!is.matrix(covariate.interest[[d]])){
       stop("covariate.interest is not a list of matrices.\n")
     }
-    covariate.interest[[d]] <- as.data.frame(covariate.interest[[d]])
     if(nrow(covariate.interest[[d]]) != (length(null.obj[[d]]$N) + length(null.obj[[d]]$rm.sample.idx))){
       stop("The sample size of covariate.interest is not correct, please check the input data.")
     }else{
@@ -117,6 +116,11 @@ melody.get.summary <- function(null.obj,
       names(cluster.nm) <- names(null.obj[[d]]$N)
       SUB.id[[d]] <- cluster.nm
     }
+  }
+
+  # Transfer to data frame
+  for(d in study.ID){
+    covariate.interest[[d]] <- as.data.frame(covariate.interest[[d]])
   }
 
   #=== Sample combination in each study corresponded to covariate.interest
