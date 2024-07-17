@@ -39,7 +39,7 @@
 #'   rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
 #'   disease <- as.numeric(CRC_meta$Group[CRC_meta$Study == d] == "CRC")
 #'   names(disease) <- CRC_meta$Sample_ID[CRC_meta$Study == d]
-#'   covariate.interest[[d]] <- data.frame(disease = disease)
+#'   covariate.interest[[d]] <- matrix(disease, ncol = 1)
 #' }
 #'
 #'  null.obj <- melody.null.model(rel.abd = rel.abd, ref = "Coprococcus catus [ref_mOTU_v2_4874]")
@@ -85,9 +85,10 @@ melody.get.summary <- function(null.obj,
     if(is.null(covariate.interest[[d]])){
       stop("Study IDs in rel.data and covariate.interest don't match, please check the input data.")
     }
-    if(!is.data.frame(covariate.interest[[d]])){
+    if(!is.matrix(covariate.interest[[d]])){
       stop("covariate.interest is not a list of data frames.\n")
     }
+    covariate.interest <- as.data.frame(covariate.interest)
     if(nrow(covariate.interest[[d]]) != (length(null.obj[[d]]$N) + length(null.obj[[d]]$rm.sample.idx))){
       stop("The sample size of covariate.interest is not correct, please check the input data.")
     }else{
