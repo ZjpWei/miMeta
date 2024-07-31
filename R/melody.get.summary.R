@@ -84,7 +84,9 @@ melody.get.summary <- function(null.obj,
       stop("Study IDs in rel.data and covariate.interest don't match, please check the input data.")
     }
     if(!is.matrix(covariate.interest[[d]])){
-      stop("covariate.interest is not a list of matrices.\n")
+      if(!is.data.frame(covariate.interest[[d]])){
+        stop("covariate.interest is not a list of matrices.\n")
+      }
     }
     if(nrow(covariate.interest[[d]]) != (length(null.obj[[d]]$N) + length(null.obj[[d]]$rm.sample.idx))){
       stop("The sample size of covariate.interest is not correct, please check the input data.")

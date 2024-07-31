@@ -120,7 +120,7 @@ for(d in unique(CRC_meta$Study)){
   rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
   disease <- as.numeric(CRC_meta$Group[CRC_meta$Study == d] == "CRC")
   names(disease) <- CRC_meta$Sample_ID[CRC_meta$Study == d]
-  covariate.interest[[d]] <- data.frame(disease = disease)
+  covariate.interest[[d]] <- matrix(disease, ncol = 1, dimnames = list(names(disease), "disease"))
 }
 
 meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest,
