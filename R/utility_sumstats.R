@@ -209,7 +209,7 @@ Get_summary <- function(summary.stat.null,
     summary.stat.study.one <- list(est = est.mat, var = cov.mat, n = n, para.id = d)
 
     #=== output ===#
-    summary.stat.study[[d]] <- summary.stat.study.one
+    summary.stat.study.one
   }
   #=== stop cluster ===#
   stopCluster(cl)
@@ -373,7 +373,7 @@ reg.fit = function(dat,
     reg.fit.one <- list(ref = ref[d], p = pp_mat, res = s.i.mat, N = N, X = X.sub, para.id = d)
 
     #=== output ===#
-    reg.fit[[d]] <- reg.fit.one
+    reg.fit.one
   }
   #=== stop cluster ===#
   stopCluster(cl)
