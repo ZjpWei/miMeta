@@ -333,7 +333,7 @@ reg.fit = function(dat,
     X.sub <- cbind(1, data.relative[[d]]$X)
     colnames(X.sub) <- c("Intercept", paste0("V_", as.character(1:(ncol(X.sub)-1))))
     rownames(X.sub) <- rownames(Y.sub)
-    feature.set.tmp <- colSums(Y.sub != 0) > filter.threshold
+    feature.set.tmp <- colMeans(Y.sub != 0) > filter.threshold
     feature.set.tmp[ncol(Y.sub)] <- TRUE
     Y.sub.tmp <- Y.sub[,feature.set.tmp]
 
