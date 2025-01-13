@@ -6,7 +6,7 @@ See following items for more details:
 
 * [`miMeta` Manual](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_0.1.0.pdf).
 
-* [`miMeta` vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
+* [`miMeta` Vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
 
 * Article: Wei Z, Chen G, Tang ZZ. Melody: Meta-analysis of Microbiome Association Studies for Discovering Generalizable Microbial Signatures.
 
