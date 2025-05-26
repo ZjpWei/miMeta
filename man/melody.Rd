@@ -134,7 +134,7 @@ Wei Z, Chen G, Tang ZZ. Melody: Meta-analysis of Microbiome Association Studies 
 \seealso{
 \code{\link{melody.get.summary}},
 \code{\link{melody.meta.summary}},
-\code{\link{melody.merge.summary}}
+\code{\link{melody.null.model}}
 }
 \author{
 Zhoujingpeng Wei, Guanhua Chen, Zheng-Zheng Tang

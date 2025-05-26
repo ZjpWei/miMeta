@@ -39,7 +39,7 @@ Get_lasso_pre = function(summary.stat.study,
   }
   for(d in study.ID){
     # Generate design matrix X and Y
-    Sigma.chol <- chol(solve(summary.stat.study[[d]]$cov)/N)
+    Sigma.chol <- chol(solve(summary.stat.study[[d]]$cov)) # /N)
     F.mat <- diag(mu.len)
     id.F <- taxa.mat[d,]
     F.mat <- F.mat[id.F,]
@@ -109,7 +109,7 @@ byabess_AA <- function(summary.stat.study,
 
   stopifnot(mu.len == length(result$beta))
   fit.coef <- result$beta[1:mu.len]
-  q_loss <- sum( (Y.enlarge - X.enlarge %*% result$beta)^2 )
+  q_loss <- sum( (Y.enlarge - X.enlarge %*% result$beta)^2 ) / lasso.mat$N
   zero.fit <- rep(0, length(empty.id))
   names(zero.fit) <- empty.id
   nonzero.fit <- fit.coef
