@@ -311,7 +311,7 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
     g.id <- 1
     s.left.lambda <- s.1.lambda * g.section + s.2.lambda * (1 - g.section)
     s.right.lambda <- s.1.lambda * (1 - g.section) + s.2.lambda * g.section
-    lambda.seq <- round.fun(c(s.1.lambda, s.left.lambda, s.right.lambda, s.2.lambda))
+    lambda.seq <- round_fun(c(s.1.lambda, s.left.lambda, s.right.lambda, s.2.lambda))
     for(s.lambda in lambda.seq){
       tmp.subset <- search.subset.s(summary.stat.study = summary.stat.study,
                                     lasso.mat = lasso.mat,
@@ -358,7 +358,7 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
           lambda.seq[3] <- lambda.seq[2]
           s.right.GIC <- s.left.GIC
           lambda.seq[2] <- lambda.seq[1] * g.section + lambda.seq[4] * (1 - g.section)
-          lambda.seq <- round.fun(lambda.seq)
+          lambda.seq <- round_fun(lambda.seq)
           tmp.subset <- search.subset.s(summary.stat.study = summary.stat.study,
                                         lasso.mat = lasso.mat,
                                         L = L,
@@ -388,7 +388,7 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
           lambda.seq[2] <- lambda.seq[3]
           s.left.GIC <- s.right.GIC
           lambda.seq[3] <- lambda.seq[1] * (1 - g.section) + lambda.seq[4] * g.section
-          lambda.seq <- round.fun(lambda.seq)
+          lambda.seq <- round_fun(lambda.seq)
           tmp.subset <- search.subset.s(summary.stat.study = summary.stat.study,
                                         lasso.mat = lasso.mat,
                                         L = L,
@@ -462,7 +462,8 @@ meta.analysis <- function(summary.stat.study = summary.stat.study,
   return(list(results.all = results.all, boud.hit = boud.hit))
 }
 
-round.fun <- function(lambda.seq){
+## round function for subset s
+round_fun <- function(lambda.seq){
   if(length(lambda.seq) != 4){
     stop("Searching lambda sequence length is different.")
   }

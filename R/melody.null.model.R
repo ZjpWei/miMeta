@@ -251,8 +251,7 @@ melody.null.model <- function(rel.abd,
 
     n = nrow(Y.sub)
     K = ncol(Y.sub)
-    # d = ncol(X.sub)
-    X.idx <- 2
+    X.idx <- ncol(X.sub)
     if(ncol(X.sub) == 2){
       est.single <- matrix(NA, nrow = ncol(X.sub), ncol = K-1, dimnames = list(c(":(Intercept)", ":X"), colnames(Y.sub)[1:(K-1)]))
     }else if(ncol(X.sub) == 3){
@@ -286,7 +285,7 @@ melody.null.model <- function(rel.abd,
           }
         }
         # Get non-singular sub-columns
-        keep.covariate <- setdiff(colnames(tmp.X)[colnames(tmp.X) %in% colnames(qrstr$qr)[1:qrstr$rank]], colnames(tmp.X)[c(1,d)])
+        keep.covariate <- setdiff(colnames(tmp.X)[colnames(tmp.X) %in% colnames(qrstr$qr)[1:qrstr$rank]], colnames(tmp.X)[c(1,X.idx)])
 
         ## Try brglmFit model
         if(ncol(X.sub) == 2){
@@ -330,8 +329,6 @@ melody.null.model <- function(rel.abd,
       mu_hat <- pp * N[i]
       s.i.mat <- rbind(s.i.mat, Y.sub[i,-ncol(Y.sub)] - mu_hat)
     }
-    print(dim(s.i.mat))
-    print(dim(Y_b))
     s.i.mat <- s.i.mat + Y_b
     rownames(s.i.mat) <- rownames(Y.sub)
     rownames(pp_mat) <- rownames(Y.sub)
