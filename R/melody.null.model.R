@@ -321,7 +321,7 @@ melody.null.model <- function(rel.abd,
         mu_hat <- pp * N[i]
         s.i.mat <- rbind(s.i.mat, Y.sub[i,-ncol(Y.sub)] - mu_hat)
       }
-      #s.i.mat <- s.i.mat + Y_b ## Comment consider bias correction
+      s.i.mat <- s.i.mat + Y_b ## Comment consider bias correction
       rownames(s.i.mat) <- rownames(Y.sub)
       rownames(pp_mat) <- rownames(Y.sub)
       reg.fit.one <- list(ref = ref[d], p = pp_mat, res = s.i.mat, N = N, X = X.sub, para.id = d)
@@ -451,7 +451,7 @@ melody.null.model <- function(rel.abd,
         mu_hat <- pp * N[i]
         s.i.mat <- rbind(s.i.mat, Y.sub[i,-ncol(Y.sub)] - mu_hat)
       }
-      # s.i.mat <- s.i.mat + Y_b
+      s.i.mat <- s.i.mat + Y_b
       rownames(s.i.mat) <- rownames(Y.sub)
       rownames(pp_mat) <- rownames(Y.sub)
       reg.fit.one <- list(ref = ref[d], p = pp_mat, res = s.i.mat, N = N, X = X.sub, para.id = d)
