@@ -21,7 +21,7 @@
 #' \code{\link{melody.meta.summary}},
 #' \code{\link{melody}}
 #'
-#' @import doParallel
+#' @import doParallel parallel foreach
 #' @importFrom brglm2 brglmFit
 #' @export
 #'
@@ -206,140 +206,238 @@ melody.get.summary <- function(null.obj,
   #=== Cluster samples from same subject ===#
   study.ID <- names(null.obj)
 
-  # cores <- detectCores()
-  # if(is.null(parallel.core)){
-  #   parallel.core <- max(cores[1]-1, 1)
-  # }else{
-  #   if(parallel.core >= cores){
-  #     warning("The number of cores excceed the capacity.\n")
-  #     parallel.core <- max(cores[1]-1, 1)
-  #   }
-  #   if(parallel.core <= 0 | as.integer(parallel.core) != parallel.core){
-  #     stop("The number of cores must be a positive interger.\n")
-  #   }
-  # }
-  # if(verbose){
-  #   message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
-  # }
-
-  # cl <- makeCluster(parallel.core[1])
-  # registerDoParallel(cl)
-  summary.stat.study <- list()
-  for(d in study.ID){
-    # summary.stat.study <- foreach(d = study.ID, .packages = "brglm2") %dopar% {
-    cov.int.lst <- Sample.info[[d]]$rm.sample.cov
-    cov.int.id <- Sample.info[[d]]$rm.sample.idx
-    cov.int.nm <- colnames(covariate.interest[[d]])
-    feat.id <- colnames(null.obj[[d]]$p)
-    est.mat <- matrix(NA, nrow = length(feat.id), ncol = length(cov.int.nm),
-                      dimnames = list(feat.id, cov.int.nm))
-    cov.mat <- matrix(NA, nrow = length(feat.id), ncol = length(cov.int.nm),
-                      dimnames = list(feat.id, cov.int.nm))
-
-    for(cov.name in cov.int.nm){
-      if(verbose){
-        message("++ Construct summary statistics for study ", d, " and covariate of interest ", cov.name, ". ++")
-      }
-      l <- which(unlist(lapply(cov.int.lst, function(r){cov.name %in% r})))
-      rm.sample.id <- cov.int.id[[l]]
-      if(length(rm.sample.id) == 0){
-        pp_mat <- null.obj[[d]]$p
-        s.i.mat <- null.obj[[d]]$res
-        X.sub <- null.obj[[d]]$X
-        N <- null.obj[[d]]$N
-        SUBid <- as.character(SUB.id[[d]])
-      }else{
-        pp_mat <- null.obj[[d]]$p[-rm.sample.id,]
-        s.i.mat <- null.obj[[d]]$res[-rm.sample.id,]
-        X.sub <- null.obj[[d]]$X[-rm.sample.id,]
-        N <- null.obj[[d]]$N[-rm.sample.id]
-        SUBid <- as.character(SUB.id[[d]])[-rm.sample.id]
-      }
-      K <- ncol(s.i.mat) + 1
-      V.i.lst <- list()
-      for(i in 1:length(N)){
-        pp <- pp_mat[i,]
-        if(K == 2){
-          V.i.lst[[i]] <- N[i] * (pp - pp * t(pp))
-        }else{
-          V.i.lst[[i]] <- N[i] * (diag(pp) - pp %*% t(pp))
-        }
-      }
-      if(!is.numeric(covariate.interest[[d]][,cov.name])){
-        stop("Covariate.interest should be numeric, please check your input.")
-      }
-      X.sub[,ncol(X.sub)] <- covariate.interest[[d]][rownames(X.sub),cov.name]
-      K <- ncol(s.i.mat) + 1
-      n <- nrow(X.sub)
-      X.name <- colnames(X.sub)
-      name.cov <- paste0(colnames(X.sub), ":", rep(colnames(s.i.mat), each = ncol(X.sub)))
-      uniq.SUBid <- unique(SUBid)
-      nn <- length(uniq.SUBid)
-      s.i.lst <- NULL
-      A <- 0
-      for(ll in 1:nn){
-        s.i.SUB <- 0
-        for(i in which(uniq.SUBid[ll] == SUBid)){
-          s.i.SUB <- s.i.SUB + t(kronecker(matrix(unlist(s.i.mat[i,]), ncol=1), matrix(X.sub[i,], ncol=1)))
-          A <- A + kronecker(V.i.lst[[i]], X.sub[i,] %*% t(X.sub[i,]))
-        }
-        s.i.lst <- rbind(s.i.lst, s.i.SUB)
-      }
-      cov_R <- solve(A)
-      colnames(cov_R) <- name.cov
-      rownames(cov_R) <- name.cov
-      colnames(A) <- name.cov
-      rownames(A) <- name.cov
-      colnames(s.i.lst) <- name.cov
-      R_lst <- list(s.i.lst = s.i.lst, cov_R = cov_R)
-
-      #=== generate covriate matrix ===#
-      ests <- cov_R[c(1:(K-1))*length(X.name), c(1:(K-1))*length(X.name)] %*% colSums(s.i.lst[,c(1:(K-1))*length(X.name),drop=FALSE], na.rm = TRUE)
-      rownames(ests) <- gsub(paste0(X.name[length(X.name)],":"), "", colnames(s.i.mat))
-
-      #=== solve GEE equation ===#
-      beta.name <- paste0(X.name[length(X.name)],":", colnames(s.i.mat))
-      gamma.name <- setdiff(colnames(cov_R), beta.name)
-      core.U <- 0
-      for(ll in 1:nrow(s.i.lst)){
-        tmp.U <- s.i.lst[ll,beta.name] - A[beta.name, gamma.name] %*% inv_gamma[[d]][[l]] %*% s.i.lst[ll,gamma.name]
-        core.U <- core.U + tmp.U %*% t(tmp.U)
-      }
-      Sigma <- cov_R[beta.name,beta.name] %*% (core.U) %*% cov_R[beta.name,beta.name]
-      if(K == 2){
-        Sigma_d <- sqrt(Sigma)
-      }else{
-        Sigma_d <- diag(sqrt(diag(Sigma)))
-      }
-      R <- Sigma / (sqrt(diag(Sigma)) %*% t(sqrt(diag(Sigma))))
-      R_lambda <- diag(nrow(R))
-      Sigma_lambda <- diag(Sigma_d %*% R_lambda %*% Sigma_d)
-
-      est.mat[rownames(ests), cov.name] <- ests[,1]
-      cov.mat[rownames(ests), cov.name] <- Sigma_lambda
+  if(!is.null(parallel.core)){
+    cores <- detectCores()
+    if(parallel.core >= cores){
+      warning("The number of cores excceed the capacity.\n")
+      parallel.core <- max(cores[1]-1, 1)
     }
-    summary.stat.study.one <- list(est = est.mat, var = cov.mat, n = n, para.id = d)
+    if(parallel.core <= 0 | as.integer(parallel.core) != parallel.core){
+      stop("The number of cores must be a positive interger.\n")
+    }
+    if(verbose){
+      message(paste0("++ ",parallel.core[1], " cores are using for generating summary statistics. ++"))
+    }
+    cl <- makeCluster(parallel.core[1])
+    registerDoParallel(cl)
+    summary.stat.study <- foreach(d = study.ID, .packages = "brglm2") %dopar% {
+      cov.int.lst <- Sample.info[[d]]$rm.sample.cov
+      cov.int.id <- Sample.info[[d]]$rm.sample.idx
+      cov.int.nm <- colnames(covariate.interest[[d]])
+      feat.id <- colnames(null.obj[[d]]$p)
+      est.mat <- matrix(NA, nrow = length(feat.id), ncol = length(cov.int.nm),
+                        dimnames = list(feat.id, cov.int.nm))
+      cov.mat <- matrix(NA, nrow = length(feat.id), ncol = length(cov.int.nm),
+                        dimnames = list(feat.id, cov.int.nm))
 
-    #=== output ===#
-    summary.stat.study[[d]] <- summary.stat.study.one
+      for(cov.name in cov.int.nm){
+        if(verbose){
+          message("++ Construct summary statistics for study ", d, " and covariate of interest ", cov.name, ". ++")
+        }
+        l <- which(unlist(lapply(cov.int.lst, function(r){cov.name %in% r})))
+        rm.sample.id <- cov.int.id[[l]]
+        if(length(rm.sample.id) == 0){
+          pp_mat <- null.obj[[d]]$p
+          s.i.mat <- null.obj[[d]]$res
+          X.sub <- null.obj[[d]]$X
+          N <- null.obj[[d]]$N
+          SUBid <- as.character(SUB.id[[d]])
+        }else{
+          pp_mat <- null.obj[[d]]$p[-rm.sample.id,]
+          s.i.mat <- null.obj[[d]]$res[-rm.sample.id,]
+          X.sub <- null.obj[[d]]$X[-rm.sample.id,]
+          N <- null.obj[[d]]$N[-rm.sample.id]
+          SUBid <- as.character(SUB.id[[d]])[-rm.sample.id]
+        }
+        K <- ncol(s.i.mat) + 1
+        V.i.lst <- list()
+        for(i in 1:length(N)){
+          pp <- pp_mat[i,]
+          if(K == 2){
+            V.i.lst[[i]] <- N[i] * (pp - pp * t(pp))
+          }else{
+            V.i.lst[[i]] <- N[i] * (diag(pp) - pp %*% t(pp))
+          }
+        }
+        if(!is.numeric(covariate.interest[[d]][,cov.name])){
+          stop("Covariate.interest should be numeric, please check your input.")
+        }
+        X.sub[,ncol(X.sub)] <- covariate.interest[[d]][rownames(X.sub),cov.name]
+        K <- ncol(s.i.mat) + 1
+        n <- nrow(X.sub)
+        X.name <- colnames(X.sub)
+        name.cov <- paste0(colnames(X.sub), ":", rep(colnames(s.i.mat), each = ncol(X.sub)))
+        uniq.SUBid <- unique(SUBid)
+        nn <- length(uniq.SUBid)
+        s.i.lst <- NULL
+        A <- 0
+        for(ll in 1:nn){
+          s.i.SUB <- 0
+          for(i in which(uniq.SUBid[ll] == SUBid)){
+            s.i.SUB <- s.i.SUB + t(kronecker(matrix(unlist(s.i.mat[i,]), ncol=1), matrix(X.sub[i,], ncol=1)))
+            A <- A + kronecker(V.i.lst[[i]], X.sub[i,] %*% t(X.sub[i,]))
+          }
+          s.i.lst <- rbind(s.i.lst, s.i.SUB)
+        }
+        cov_R <- solve(A)
+        colnames(cov_R) <- name.cov
+        rownames(cov_R) <- name.cov
+        colnames(A) <- name.cov
+        rownames(A) <- name.cov
+        colnames(s.i.lst) <- name.cov
+        R_lst <- list(s.i.lst = s.i.lst, cov_R = cov_R)
+
+        #=== generate covriate matrix ===#
+        ests <- cov_R[c(1:(K-1))*length(X.name), c(1:(K-1))*length(X.name)] %*% colSums(s.i.lst[,c(1:(K-1))*length(X.name),drop=FALSE], na.rm = TRUE)
+        rownames(ests) <- gsub(paste0(X.name[length(X.name)],":"), "", colnames(s.i.mat))
+
+        #=== solve GEE equation ===#
+        beta.name <- paste0(X.name[length(X.name)],":", colnames(s.i.mat))
+        gamma.name <- setdiff(colnames(cov_R), beta.name)
+        core.U <- 0
+        for(ll in 1:nrow(s.i.lst)){
+          tmp.U <- s.i.lst[ll,beta.name] - A[beta.name, gamma.name] %*% inv_gamma[[d]][[l]] %*% s.i.lst[ll,gamma.name]
+          core.U <- core.U + tmp.U %*% t(tmp.U)
+        }
+        Sigma <- cov_R[beta.name,beta.name] %*% (core.U) %*% cov_R[beta.name,beta.name]
+        if(K == 2){
+          Sigma_d <- sqrt(Sigma)
+        }else{
+          Sigma_d <- diag(sqrt(diag(Sigma)))
+        }
+        R <- Sigma / (sqrt(diag(Sigma)) %*% t(sqrt(diag(Sigma))))
+        R_lambda <- diag(nrow(R))
+        Sigma_lambda <- diag(Sigma_d %*% R_lambda %*% Sigma_d)
+
+        est.mat[rownames(ests), cov.name] <- ests[,1]
+        cov.mat[rownames(ests), cov.name] <- Sigma_lambda
+      }
+      summary.stat.study.one <- list(est = est.mat, var = cov.mat, n = n, para.id = d)
+
+      #=== output ===#
+      summary.stat.study.one
+    }
+
+    #=== stop cluster ===#
+    stopCluster(cl)
+
+    #=== reorder output ===#
+    order.vec <- NULL
+    for(ll in 1:length(summary.stat.study)){
+      order.vec <- c(order.vec, summary.stat.study[[ll]]$para.id)
+      summary.stat.study[[ll]]$para.id <- NULL
+    }
+    names(summary.stat.study) <- order.vec
+    summary.stat.study <- summary.stat.study[study.ID]
+
+    #=== Get a Melody object for meta-analysis ===#
+    for(d in study.ID){
+      summary.stat.study[[d]]$ref <- ref[d]
+    }
+    return(summary.stat.study)
+  }else{
+    summary.stat.study <- list()
+    for(d in study.ID){
+      cov.int.lst <- Sample.info[[d]]$rm.sample.cov
+      cov.int.id <- Sample.info[[d]]$rm.sample.idx
+      cov.int.nm <- colnames(covariate.interest[[d]])
+      feat.id <- colnames(null.obj[[d]]$p)
+      est.mat <- matrix(NA, nrow = length(feat.id), ncol = length(cov.int.nm),
+                        dimnames = list(feat.id, cov.int.nm))
+      cov.mat <- matrix(NA, nrow = length(feat.id), ncol = length(cov.int.nm),
+                        dimnames = list(feat.id, cov.int.nm))
+
+      for(cov.name in cov.int.nm){
+        if(verbose){
+          message("++ Construct summary statistics for study ", d, " and covariate of interest ", cov.name, ". ++")
+        }
+        l <- which(unlist(lapply(cov.int.lst, function(r){cov.name %in% r})))
+        rm.sample.id <- cov.int.id[[l]]
+        if(length(rm.sample.id) == 0){
+          pp_mat <- null.obj[[d]]$p
+          s.i.mat <- null.obj[[d]]$res
+          X.sub <- null.obj[[d]]$X
+          N <- null.obj[[d]]$N
+          SUBid <- as.character(SUB.id[[d]])
+        }else{
+          pp_mat <- null.obj[[d]]$p[-rm.sample.id,]
+          s.i.mat <- null.obj[[d]]$res[-rm.sample.id,]
+          X.sub <- null.obj[[d]]$X[-rm.sample.id,]
+          N <- null.obj[[d]]$N[-rm.sample.id]
+          SUBid <- as.character(SUB.id[[d]])[-rm.sample.id]
+        }
+        K <- ncol(s.i.mat) + 1
+        V.i.lst <- list()
+        for(i in 1:length(N)){
+          pp <- pp_mat[i,]
+          if(K == 2){
+            V.i.lst[[i]] <- N[i] * (pp - pp * t(pp))
+          }else{
+            V.i.lst[[i]] <- N[i] * (diag(pp) - pp %*% t(pp))
+          }
+        }
+        if(!is.numeric(covariate.interest[[d]][,cov.name])){
+          stop("Covariate.interest should be numeric, please check your input.")
+        }
+        X.sub[,ncol(X.sub)] <- covariate.interest[[d]][rownames(X.sub),cov.name]
+        K <- ncol(s.i.mat) + 1
+        n <- nrow(X.sub)
+        X.name <- colnames(X.sub)
+        name.cov <- paste0(colnames(X.sub), ":", rep(colnames(s.i.mat), each = ncol(X.sub)))
+        uniq.SUBid <- unique(SUBid)
+        nn <- length(uniq.SUBid)
+        s.i.lst <- NULL
+        A <- 0
+        for(ll in 1:nn){
+          s.i.SUB <- 0
+          for(i in which(uniq.SUBid[ll] == SUBid)){
+            s.i.SUB <- s.i.SUB + t(kronecker(matrix(unlist(s.i.mat[i,]), ncol=1), matrix(X.sub[i,], ncol=1)))
+            A <- A + kronecker(V.i.lst[[i]], X.sub[i,] %*% t(X.sub[i,]))
+          }
+          s.i.lst <- rbind(s.i.lst, s.i.SUB)
+        }
+        cov_R <- solve(A)
+        colnames(cov_R) <- name.cov
+        rownames(cov_R) <- name.cov
+        colnames(A) <- name.cov
+        rownames(A) <- name.cov
+        colnames(s.i.lst) <- name.cov
+        R_lst <- list(s.i.lst = s.i.lst, cov_R = cov_R)
+
+        #=== generate covriate matrix ===#
+        ests <- cov_R[c(1:(K-1))*length(X.name), c(1:(K-1))*length(X.name)] %*% colSums(s.i.lst[,c(1:(K-1))*length(X.name),drop=FALSE], na.rm = TRUE)
+        rownames(ests) <- gsub(paste0(X.name[length(X.name)],":"), "", colnames(s.i.mat))
+
+        #=== solve GEE equation ===#
+        beta.name <- paste0(X.name[length(X.name)],":", colnames(s.i.mat))
+        gamma.name <- setdiff(colnames(cov_R), beta.name)
+        core.U <- 0
+        for(ll in 1:nrow(s.i.lst)){
+          tmp.U <- s.i.lst[ll,beta.name] - A[beta.name, gamma.name] %*% inv_gamma[[d]][[l]] %*% s.i.lst[ll,gamma.name]
+          core.U <- core.U + tmp.U %*% t(tmp.U)
+        }
+        Sigma <- cov_R[beta.name,beta.name] %*% (core.U) %*% cov_R[beta.name,beta.name]
+        if(K == 2){
+          Sigma_d <- sqrt(Sigma)
+        }else{
+          Sigma_d <- diag(sqrt(diag(Sigma)))
+        }
+        R <- Sigma / (sqrt(diag(Sigma)) %*% t(sqrt(diag(Sigma))))
+        R_lambda <- diag(nrow(R))
+        Sigma_lambda <- diag(Sigma_d %*% R_lambda %*% Sigma_d)
+
+        est.mat[rownames(ests), cov.name] <- ests[,1]
+        cov.mat[rownames(ests), cov.name] <- Sigma_lambda
+      }
+      summary.stat.study.one <- list(est = est.mat, var = cov.mat, n = n, para.id = d)
+
+      #=== output ===#
+      summary.stat.study[[d]] <- summary.stat.study.one
+    }
+    #=== Get a Melody object for meta-analysis ===#
+    for(d in study.ID){
+      summary.stat.study[[d]]$ref <- ref[d]
+    }
+    return(summary.stat.study)
   }
-
-  #=== stop cluster ===#
-  # stopCluster(cl)
-
-  #=== reorder output ===#
-  # order.vec <- NULL
-  # for(ll in 1:length(summary.stat.study)){
-  #   order.vec <- c(order.vec, summary.stat.study[[ll]]$para.id)
-  #   summary.stat.study[[ll]]$para.id <- NULL
-  # }
-  # names(summary.stat.study) <- order.vec
-  # summary.stat.study <- summary.stat.study[study.ID]
-
-  #=== Get a Melody object for meta-analysis ===#
-  for(d in study.ID){
-    summary.stat.study[[d]]$ref <- ref[d]
-  }
-
-  return(summary.stat.study)
 }
