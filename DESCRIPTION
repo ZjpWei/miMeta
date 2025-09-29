@@ -28,4 +28,4 @@ VignetteBuilder: knitr
 Encoding: UTF-8
 LazyData: true
 Depends: 
-    R (>= 4.5.0)
+    R (>= 4.3.0)
