@@ -4,7 +4,7 @@
 
 See following items for more details:
 
-* [`miMeta` Manual](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_0.1.0.pdf).
+* [`miMeta` Manual](https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_1.1.0.pdf).
 
 * [`miMeta` Vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
 
@@ -29,11 +29,6 @@ The package depends on the following R packages: `Mass`, `brglm2`, `abess`, `UpS
 Install package from github.
 ```{r}
 devtools::install_github("ZjpWei/miMeta")
-```
-
-Install package by [source code](https://github.com/ZjpWei/miMeta/blob/main/miMeta_0.1.0.tar.gz)
-```{r}
-install.packages("./miMeta_0.1.0.tar.gz", repos = NULL, type = "source")
 ```
 
 ## Quick start guide
