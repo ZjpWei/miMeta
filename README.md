@@ -21,7 +21,7 @@ Department of Biostatistics and Medical Informatics, University of Wisconsin-Mad
 
 ## System requirements
 
-The `miMeta` package (version 0.1.0) should be compatible with Windows, Mac, and Linux operating systems.
+The `miMeta` package (version 2.1.0) should be compatible with Windows, Mac, and Linux operating systems.
 
 Before setting up the package, users should have R version 4.3.0 or higher.
 
