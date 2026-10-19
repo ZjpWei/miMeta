@@ -36,6 +36,7 @@ devtools::install_github("ZjpWei/miMeta")
 
 ## Quick start guide
 
+### Melody
 The following are minimal examples on functionalities of `miMeta`. For more detailes, please refer to its [vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
 
 * Load package and data
@@ -60,6 +61,54 @@ for(d in c("FR-CRC", "DE-CRC")){
 ```{r}
 meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest, 
                       ref = "Coprococcus catus [ref_mOTU_v2_4874]", verbose = TRUE)
+```
+### SMESH
+* Load package and data
+```{r}
+library("miMeta")
+
+########## Download the pan-disease data ##########
+## About 3 MB from the SMESH reproducibility repository, cached for the
+## session, so several examples in one session download it only once.
+repo <- "https://raw.githubusercontent.com/ZjpWei/SMESH/main/GMrepo_analysis/Data"
+dest <- file.path(tempdir(), "GMrepo")
+dir.create(dest, showWarnings = FALSE)
+for(f in c("rel.abd.rds", "covariate.interest.rds", "species_lst.Rdata", "GMrepo_project_summary.xlsx")){
+  target <- file.path(dest, f)
+  if(!file.exists(target))
+    download.file(file.path(repo, f), target, mode = "wb", quiet = TRUE)
+}
+rel.abd <- readRDS(file.path(dest, "rel.abd.rds"))
+cov.int <- readRDS(file.path(dest, "covariate.interest.rds"))
+load(file.path(dest, "species_lst.Rdata")) # dense_feature: 244 species
+psum <- openxlsx::read.xlsx(file.path(dest, "GMrepo_project_summary.xlsx"))
+
+########## Prepare input data ##########
+## Restrict to the 244 species used in the pan-disease analysis
+feature.counts <- lapply(rel.abd, function(m)
+m[, intersect(colnames(m), dense_feature), drop = FALSE])
+covariate.interest <- lapply(names(feature.counts), function(d){
+  keep <- rownames(feature.counts[[d]])
+  matrix(as.integer(cov.int[[d]][keep, 1]), ncol = 1,
+  dimnames = list(keep, "disease"))
+})
+names(covariate.interest) <- names(feature.counts)
+```
+
+* Perform meta-analysis
+```{r}
+mesh <- unique(psum[, c("disease_mesh", "disease_name")])
+context <- setNames(
+  mesh$disease_name[match(sub("^.*_", "", names(feature.counts)), mesh$disease_mesh)],
+  names(feature.counts))
+
+########## Structure-learning meta-analysis ##########
+## The number of clusters G is selected from the data (G = NULL, the default).
+## "tune" (the default) is recommended for a real analysis; "median" is faster.
+fit <- smesh(feature.counts = feature.counts, covariate.interest = covariate.interest,context = context, correct = "median")
+fit$disease$context_assignments
+head(fit$disease$effects)
+fit$disease$diagnostics$gic_path
 ```
 
 ## Issues tracker
