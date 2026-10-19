@@ -36,8 +36,9 @@ devtools::install_github("ZjpWei/miMeta")
 
 ## Quick start guide
 
-### Melody
 The following are minimal examples on functionalities of `miMeta`. For more detailes, please refer to its [vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
+
+### Melody
 
 * Load package and data
 ```{r}
