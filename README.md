@@ -8,8 +8,11 @@ See following items for more details:
 
 * [`miMeta` Vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html).
 
-* Article: Wei Z, Chen G, Tang ZZ. Melody: Meta-analysis of Microbiome Association Studies for Discovering Generalizable Microbial Signatures.
-
+## Reference
+* Wei, Z., Chen, G. & Tang, ZZ. *Melody: meta-analysis of microbiome association studies for discovering generalizable microbial signatures*. Genome Biol 26, 245 (2025). https://doi.org/10.1186/s13059-025-03721-4.
+  
+* Wei, Z., Chen, G. & Tang, ZZ. *Structure-learning meta-analysis resolves cross-context heterogeneity in microbiome associations*.
+  
 ## Author
 
 Zhoujingpeng Wei @[Tang Lab](https://tangzheng1.github.io/tanglab/)
