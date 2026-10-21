@@ -2,11 +2,11 @@
 
 ## New features
 
-* Added **SMESH**, a structure-learning meta-analysis that learns latent clusters of contexts and
-  estimates all-cluster-shared and context-dependent microbial signatures. Unlike a fixed-effect
-  meta-analysis, which summarizes each feature through one overall association, SMESH separates
-  signatures whose association is selected as nonzero in every cluster from those selected in only
-  a subset of clusters.
+* Added **SMESH**, a structure-learning meta-analysis that groups contexts (for example, diseases
+  or tumor types) into latent clusters with similar association profiles, and identifies microbial
+  signatures that are shared by all clusters or specific to a subset of clusters. Unlike a
+  fixed-effect meta-analysis, which summarizes each feature through one overall association, SMESH
+  separates all-cluster-shared signatures from context-dependent ones.
 
 * `smesh()` runs the whole procedure from sequencing read counts: it generates per-study
   association estimates and standard errors with PALM, combines the studies of each context by

@@ -4,8 +4,8 @@
 
 The package provides two methods:
 
-* **Melody** combines summary statistics across studies to select microbial signatures that generalize.
-* **SMESH** learns latent clusters of contexts and separates signatures whose association is selected as nonzero in every cluster from those selected in only a subset of clusters.
+* **Melody** combines summary statistics from multiple microbiome association studies to identify microbial signatures whose associations generalize across studies.
+* **SMESH** groups contexts (for example, diseases or tumor types) into latent clusters with similar association profiles, and identifies microbial signatures that are shared by all clusters or specific to a subset of clusters.
 
 See following items for more details:
 

@@ -6,7 +6,7 @@ Authors@R: c(
     person("Zhoujingpeng", "Wei", email = "zwei74@wisc.edu", role = c("aut", "cre")),
     person("Guanhua", "Chen", role = "aut"),
     person("Zheng-Zheng", "Tang", role = "aut"))
-Description: This R package implements new methods for meta-analysis of microbiome association studies that respect the unique features of microbiome data such as compositionality. Melody combines summary statistics across studies to select microbial signatures that generalize. SMESH learns latent clusters of contexts and separates signatures whose association is selected as nonzero in every cluster from those selected in only a subset of clusters. 
+Description: This R package implements new methods for meta-analysis of microbiome association studies that respect the unique features of microbiome data such as compositionality. Melody combines summary statistics from multiple microbiome association studies to identify microbial signatures whose associations generalize across studies. SMESH groups contexts (for example, diseases or tumor types) into latent clusters with similar association profiles, and identifies microbial signatures that are shared by all clusters or specific to a subset of clusters.
 Date: 2026-10-19
 Reference: Wei Z, Chen G, Tang ZZ. Melody: meta-analysis of microbiome association studies for discovering generalizable microbial signatures. Genome Biology. 2025;26:245. doi:10.1186/s13059-025-03721-4.
   Wei Z, Chen G, Tang ZZ. Structure-learning meta-analysis resolves cross-context heterogeneity in microbiome associations. Submitted.
