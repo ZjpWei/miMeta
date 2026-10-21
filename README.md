@@ -15,10 +15,11 @@ See following items for more details:
 
 * [`miMeta` Vignette for SMESH](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/smesh_vignette.html).
 
-* Article (Melody): Wei Z, Chen G, Tang ZZ. Melody: meta-analysis of microbiome association studies for discovering generalizable microbial signatures. Genome Biology. 2025;26:245. doi:10.1186/s13059-025-03721-4.
-
-* Article (SMESH): Wei Z, Chen G, Tang ZZ. Structure-learning meta-analysis resolves cross-context heterogeneity in microbiome associations.
-
+## Reference
+* Wei, Z., Chen, G. & Tang, ZZ. *Melody: meta-analysis of microbiome association studies for discovering generalizable microbial signatures*. Genome Biol 26, 245 (2025). https://doi.org/10.1186/s13059-025-03721-4.
+  
+* Wei, Z., Chen, G. & Tang, ZZ. *Structure-learning meta-analysis resolves cross-context heterogeneity in microbiome associations*.
+  
 ## Author
 
 Zhoujingpeng Wei @[Tang Lab](https://tangzheng1.github.io/tanglab/)
@@ -46,6 +47,8 @@ devtools::install_github("ZjpWei/miMeta")
 
 The following are minimal examples on functionalities of `miMeta`. For more details, please refer to the [Melody vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/miMeta_vignette.html) and the [SMESH vignette](https://htmlpreview.github.io/?https://github.com/ZjpWei/miMeta/blob/main/doc/smesh_vignette.html).
 
+### Melody
+
 * Load package and data
 ```{r}
 library("miMeta")
@@ -70,12 +73,16 @@ meta.result <- melody(feature.counts = feature.counts, covariate.interest = cova
                       ref = "Coprococcus catus [ref_mOTU_v2_4874]", verbose = TRUE)
 ```
 
-* Perform structure-learning meta-analysis with SMESH
+### SMESH
 
 SMESH learns clusters of contexts, so it needs more contexts than the two studies above. This
 example uses `sim_data`, 10 simulated contexts in two latent clusters with 100 features, of which
 30 are true signatures.
+
+* Load package and data
 ```{r}
+library("miMeta")
+
 data("sim_data")
 feature.counts <- sim_data$sim_abd
 sim_meta <- sim_data$sim_meta
@@ -85,7 +92,10 @@ covariate.interest <- lapply(names(feature.counts), function(d){
   matrix(m$Group, ncol = 1, dimnames = list(m$Sample_ID, "disease"))
 })
 names(covariate.interest) <- names(feature.counts)
+```
 
+* Perform structure-learning meta-analysis with SMESH
+```{r}
 smesh.result <- smesh(feature.counts = feature.counts, covariate.interest = covariate.interest,
                       verbose = TRUE)
 smesh.result$disease$context_assignments

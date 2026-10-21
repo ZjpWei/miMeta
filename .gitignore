@@ -4,3 +4,8 @@
 .Ruserdata
 /doc/
 /Meta/
+Rplots.pdf
+*.Rcheck/
+vignettes/.build.timestamp
+vignettes/*_files/
+vignettes/*.R
