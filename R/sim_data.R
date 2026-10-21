@@ -1,0 +1,43 @@
+#' Simulated data of 10 contexts in two latent clusters
+#'
+#' The "sim_data" is a small simulated data set for the examples of the SMESH functions. It includes
+#' "sim_abd", "sim_meta" and "sim_truth". The 10 contexts fall into two latent clusters of five
+#' contexts each, and 30 of the 100 microbial features are true signatures: 15 are all-cluster
+#' shared, 8 are specific to cluster C1 and 7 are specific to cluster C2.
+#'
+#' \itemize{
+#'   \item "sim_abd" is a list of sample-by-feature matrices of sequencing read counts, one per
+#'     context, each with 100 samples (50 controls and 50 cases) and 100 features.
+#'   \item "sim_meta" is a data frame of the sample-level variables: "Sample_ID", matching the row
+#'     names of "sim_abd"; "Context", matching the names of "sim_abd"; and "Group", the disease
+#'     status, 1 for a case and 0 for a control.
+#'   \item "sim_truth" is the truth the data were simulated from: "cluster", the latent cluster of
+#'     each context, and "signatures", a data frame of the 30 true signatures with their sharing
+#'     category, fold change and direction.
+#' }
+#'
+#' The counts were simulated with MIDASim from 10 colorectal neoplasia metagenomic studies, each
+#' context inheriting the distributional and dependence structure of one study, following the
+#' simulation design of the SMESH paper. Association signals were introduced by multiplying the
+#' mean proportions of the true signatures in one group by a fold change, drawn from
+#' Uniform(2, 2.5) for all-cluster-shared signatures and Uniform(5, 7) for cluster-specific
+#' signatures, with 60 percent of the signatures enriched in cases.
+#'
+#' @usage data(sim_data)
+#'
+#' @references He M, Zhao N, Satten GA. MIDASim: a fast and simple simulator for realistic
+#' microbiome data. Microbiome. 2024;12:135. doi:10.1186/s40168-024-01822-z.
+#'
+#' Wei Z, Chen G, Tang ZZ. Structure-learning meta-analysis resolves cross-context heterogeneity in
+#' microbiome associations. Submitted.
+#'
+#' @examples
+#' \donttest{
+#' library("miMeta")
+#' data("sim_data")
+#' sim_abd <- sim_data$sim_abd
+#' sim_meta <- sim_data$sim_meta
+#' sim_data$sim_truth$cluster
+#' head(sim_data$sim_truth$signatures)
+#' }
+"sim_data"

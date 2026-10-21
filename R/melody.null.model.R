@@ -1,13 +1,14 @@
-#' @title Get information from the null model.
+#' @title Get information from the null model
 #'
 #' @description The "melody.null.model" function computes the estimated mean microbial feature proportions and residuals  of the relative abundance under the null model of
 #' no associations for each study (so this function does not need the covariate.interest information).
 #' The output of this function will be fed into the "melody.get.summary" function to construct summary statistics
 #' for covariates of interest in each study.
 #'
+#' @param feature.counts A named list of sample-by-feature matrices of nonnegative sequencing read counts, with one matrix per study. The list names must be the study identifiers; matrix row names and column names must be sample and microbial-feature identifiers, respectively. Row sums are used as sequencing-depth measures. The counts should not be converted to proportions or normalized. Missing values are not allowed.
 #' @param ... See function melody.
 #'
-#' @return Output a list with each component for a study. The component includes the following elements.
+#' @return Returns a list with each component for a study. The component includes the following elements.
 #' \item{ref}{Reference feature ID for the study.}
 #' \item{p}{A matrix of the estimated mean microbial feature proportions for the study.}
 #' \item{res}{A matrix of the residuals of the relative abundance for the study.}
@@ -31,16 +32,16 @@
 #' CRC_meta <- CRC_data$CRC_meta
 #'
 #' ########## Generate summary statistics ##########
-#' rel.abd <- list()
+#' feature.counts <- list()
 #' for(d in unique(CRC_meta$Study)){
-#'   rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
+#'   feature.counts[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
 #' }
 #'
-#' null.obj <- melody.null.model(rel.abd = rel.abd, ref = "Coprococcus catus [ref_mOTU_v2_4874]")
+#' null.obj <- melody.null.model(feature.counts = feature.counts, ref = "Coprococcus catus [ref_mOTU_v2_4874]")
 #' }
 #'
 
-melody.null.model <- function(rel.abd,
+melody.null.model <- function(feature.counts,
                               covariate.adjust = NULL,
                               depth.filter = 0,
                               prev.filter = 0.1,
@@ -48,7 +49,7 @@ melody.null.model <- function(rel.abd,
                               parallel.core = NULL){
 
   #=== Check input data ===#
-  study.ID <- names(rel.abd)
+  study.ID <- names(feature.counts)
   if(is.null(study.ID)){
     stop("Please check the study name in rel.data.")
   }else{
@@ -59,20 +60,20 @@ melody.null.model <- function(rel.abd,
 
   ### match rel.data and covariate.adjust
   for(d in study.ID){
-    if(!all(!is.na(rel.abd[[d]]))){
+    if(!all(!is.na(feature.counts[[d]]))){
       stop("Detect NA in relative abundant counts.\n")
     }
-    if(min(rel.abd[[d]]) < 0){
+    if(min(feature.counts[[d]]) < 0){
       stop("Detect negative value in relative abundant counts.\n")
     }
     if(!is.null(covariate.adjust[[d]])){
       if(!is.data.frame(covariate.adjust[[d]])){
         stop("covariate.adjust is not a list of data frames.\n")
       }
-      if(nrow(covariate.adjust[[d]]) != nrow(rel.abd[[d]])){
-        stop("The sample size doesn't match between rel.abd and covariate.adjust, please check the input data.\n")
+      if(nrow(covariate.adjust[[d]]) != nrow(feature.counts[[d]])){
+        stop("The sample size doesn't match between feature.counts and covariate.adjust, please check the input data.\n")
       }else{
-        rownames(covariate.adjust[[d]]) <- rownames(rel.abd[[d]])
+        rownames(covariate.adjust[[d]]) <- rownames(feature.counts[[d]])
       }
       if(!all(!is.na(covariate.adjust[[d]]))){
         stop("Detect NA in covariate.adjust.\n")
@@ -83,9 +84,9 @@ melody.null.model <- function(rel.abd,
   #=== Filter the samples using depth.filter ===#
   rm.sample.idx <- list()
   for(d in study.ID){
-    depth.kp <- which(rowSums(rel.abd[[d]]) > depth.filter)
-    rm.sample.idx[[d]] <- which(rowSums(rel.abd[[d]]) <= depth.filter)
-    rel.abd[[d]] <- rel.abd[[d]][depth.kp,]
+    depth.kp <- which(rowSums(feature.counts[[d]]) > depth.filter)
+    rm.sample.idx[[d]] <- which(rowSums(feature.counts[[d]]) <= depth.filter)
+    feature.counts[[d]] <- feature.counts[[d]][depth.kp,]
     if(!is.null(covariate.adjust[[d]])){
       covariate.adjust[[d]] <- covariate.adjust[[d]] %>% dplyr::slice(depth.kp)
     }
@@ -94,7 +95,7 @@ melody.null.model <- function(rel.abd,
   #=== Match samples in relative abundant counts and sample data ===#
   dat <- list()
   for(d in study.ID){
-    Y.pool <- rel.abd[[d]]
+    Y.pool <- feature.counts[[d]]
     if(length(Y.pool) == 0){
       warning(paste0("Less than 20 samples in study ", d, ", the summary statistics is not stable.",
                      " Remove study ", d, "\n"))

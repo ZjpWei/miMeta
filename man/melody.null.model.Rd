@@ -2,10 +2,10 @@
 % Please edit documentation in R/melody.null.model.R
 \name{melody.null.model}
 \alias{melody.null.model}
-\title{Get information from the null model.}
+\title{Get information from the null model}
 \usage{
 melody.null.model(
-  rel.abd,
+  feature.counts,
   covariate.adjust = NULL,
   depth.filter = 0,
   prev.filter = 0.1,
@@ -14,10 +14,12 @@ melody.null.model(
 )
 }
 \arguments{
+\item{feature.counts}{A named list of sample-by-feature matrices of nonnegative sequencing read counts, with one matrix per study. The list names must be the study identifiers; matrix row names and column names must be sample and microbial-feature identifiers, respectively. Row sums are used as sequencing-depth measures. The counts should not be converted to proportions or normalized. Missing values are not allowed.}
+
 \item{...}{See function melody.}
 }
 \value{
-Output a list with each component for a study. The component includes the following elements.
+Returns a list with each component for a study. The component includes the following elements.
 \item{ref}{Reference feature ID for the study.}
 \item{p}{A matrix of the estimated mean microbial feature proportions for the study.}
 \item{res}{A matrix of the residuals of the relative abundance for the study.}
@@ -39,12 +41,12 @@ CRC_abd <- CRC_data$CRC_abd
 CRC_meta <- CRC_data$CRC_meta
 
 ########## Generate summary statistics ##########
-rel.abd <- list()
+feature.counts <- list()
 for(d in unique(CRC_meta$Study)){
-  rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
+  feature.counts[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
 }
 
-null.obj <- melody.null.model(rel.abd = rel.abd, ref = "Coprococcus catus [ref_mOTU_v2_4874]")
+null.obj <- melody.null.model(feature.counts = feature.counts, ref = "Coprococcus catus [ref_mOTU_v2_4874]")
 }
 
 }

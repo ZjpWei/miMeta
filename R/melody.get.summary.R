@@ -1,4 +1,4 @@
-#' @title Generate Melody summary statistics for individual studies.
+#' @title Generate Melody summary statistics for individual studies
 #'
 #' @description This function directly takes the output object from the "melody.null.model" function and
 #' constructs summary statistics for covariates of interest in each study.
@@ -6,9 +6,9 @@
 #'
 #' @param null.obj The output of function "melody.null.model".
 #' @param ... See function melody. In covariate.interest and cluster,
-#' the order of samples should be matched with the order in rel.abd used in the "melody.null.model" function.
+#' the order of samples should be matched with the order in feature.counts used in the "melody.null.model" function.
 #'
-#' @return Output a list with each component for a study. The component includes the following elements.
+#' @return Returns a list with each component for a study. The component includes the following elements.
 #' \item{ref}{Reference feature ID for the study.}
 #' \item{est}{A matrix contains the relative-abundance association coefficient estimates for the study. The row names are microbial feature IDs
 #' and the column names are the covariates of interest IDs.}
@@ -33,16 +33,16 @@
 #' CRC_meta <- CRC_data$CRC_meta
 #'
 #' ########## Generate summary statistics ##########
-#' rel.abd <- list()
+#' feature.counts <- list()
 #' covariate.interest <- list()
 #' for(d in unique(CRC_meta$Study)){
-#'   rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
+#'   feature.counts[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
 #'   disease <- as.numeric(CRC_meta$Group[CRC_meta$Study == d] == "CRC")
 #'   names(disease) <- CRC_meta$Sample_ID[CRC_meta$Study == d]
 #'   covariate.interest[[d]] <- matrix(disease, ncol = 1, dimnames = list(names(disease), "disease"))
 #' }
 #'
-#'  null.obj <- melody.null.model(rel.abd = rel.abd, ref = "Coprococcus catus [ref_mOTU_v2_4874]")
+#'  null.obj <- melody.null.model(feature.counts = feature.counts, ref = "Coprococcus catus [ref_mOTU_v2_4874]")
 #'
 #'  summary.stats <- melody.get.summary(null.obj = null.obj, covariate.interest = covariate.interest)
 #' }

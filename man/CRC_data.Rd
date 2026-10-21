@@ -3,7 +3,7 @@
 \docType{data}
 \name{CRC_data}
 \alias{CRC_data}
-\title{Datasets from two metagenomics studies of colorectal cancer (CRC)}
+\title{Data from two metagenomic studies of colorectal cancer (CRC)}
 \format{
 An object of class \code{list} of length 2.
 }
@@ -15,7 +15,7 @@ data(CRC_data)
 }
 \description{
 The "CRC_data" includes "CRC_abd" and "CRC_meta". "CRC_abd" is a sample-by-feature matrix of
-relative abundance counts from the two studies including 267 species under order "Clostridiales".
+sequencing read counts from the two studies including 267 species under order "Clostridiales".
 The "CRC_meta" is a data frame including the sample-level variables from the two studies.
 }
 \examples{

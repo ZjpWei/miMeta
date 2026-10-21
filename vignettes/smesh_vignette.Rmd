@@ -1,0 +1,425 @@
+---
+title: "miMeta Tutorial for SMESH"
+author:
+- name: "Zhoujingpeng Wei"
+  affiliation:
+  - Department of Biostatistics and Medical Informatics, University of Wisconsin-Madison
+  email: zwei74@wisc.edu
+package: miMeta
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    code_folding: show
+vignette: >
+  %\VignetteIndexEntry{SMESH}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options:
+  chunk_output_type: console
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width = 8, fig.height = 5, dpi = 100)
+```
+
+# Introduction
+
+A conventional fixed-effect meta-analysis summarizes each microbial
+feature through one overall association. When microbial association
+profiles differ across contexts (e.g., disease stages), this approach
+does not reveal latent groups of contexts and may attenuate or obscure
+context-dependent signals. SMESH [1] addresses this problem by learning
+context clusters and sparse cluster-level association patterns from
+effect estimates and standard errors.
+
+SMESH groups the **contexts** of a study collection into a small number
+of latent **clusters** and estimates the microbial features associated
+with a covariate of interest in each cluster. The result separates
+
+- the **all-cluster-shared** signatures, selected as associated in every
+  cluster in which they are estimable, although their effect magnitudes
+  and directions may differ across clusters, from
+- the **context-dependent** signatures, selected in only a subset of
+  clusters.
+
+A context is whatever the clusters are meant to be learned over: a
+disease, a tumor type, a disease stage. Studies assigned to the same
+context are first combined into one context-level estimate and standard
+error. Each context therefore contributes one association profile to the
+clustering, while evidence from multiple studies is reflected through
+increased precision.
+
+The package exposes SMESH through two functions:
+
+- **`smesh`** runs everything from sequencing read counts. It generates
+  study-level association estimates and standard errors with PALM [2],
+  combines the studies of each context by fixed-effect meta-analysis,
+  and fits the SMESH model.
+
+- **`smesh.summary`** fits the SMESH model to context-level summary
+  statistics you supply. Use it when the studies cannot be shared
+  centrally, or when you would rather use alternative summary
+  statistics.
+
+# Installation
+
+Install package from GitHub.
+
+```{r getPackage, echo=TRUE}
+if(!require("miMeta", quietly = TRUE)){
+  devtools::install_github("ZjpWei/miMeta")
+}
+## `smesh` generates its summary statistics with PALM, which is installed the same way.
+if(!require("PALM", quietly = TRUE)){
+  devtools::install_github("ZjpWei/PALM_package")
+}
+```
+
+Load the packages.
+
+```{r load, echo=TRUE, message=FALSE, warning=FALSE}
+library("miMeta")
+library("PALM")
+```
+
+# Data processing
+
+We use `sim_data`, a small simulated data set shipped with the package,
+to demonstrate the use of each function. Because the data are
+simulated, the true clusters and signatures are known, and the fit can
+be checked against them. `sim_data` holds
+
+* "sim_abd": a list of sample-by-feature matrices of sequencing read
+  counts, one per context. Each of the 10 contexts has 100 samples (50
+  controls and 50 cases) and 100 microbial features.
+
+* "sim_meta": the sample-level variables, "Sample_ID", "Context" and
+  "Group", the disease status (1 for a case, 0 for a control).
+
+* "sim_truth": the truth the data were simulated from. The 10 contexts
+  fall into two latent clusters of five, and 30 of the 100 features are
+  true signatures: 15 all-cluster shared, 8 specific to cluster C1 and 7
+  specific to cluster C2.
+
+The counts were simulated with MIDASim [3] from 10 colorectal neoplasia
+metagenomic studies, following the simulation design of the SMESH paper
+[1]. The disease status is the covariate of interest.
+
+```{r data, echo=TRUE, message=FALSE}
+data("sim_data")
+
+## Sequencing read counts, one sample-by-feature matrix per context
+feature.counts <- sim_data$sim_abd
+sim_meta <- sim_data$sim_meta
+sapply(feature.counts, dim)
+
+## Covariate of interest: disease status, one single-column matrix per context
+covariate.interest <- lapply(names(feature.counts), function(d) {
+  m <- sim_meta[sim_meta$Context == d, ]
+  matrix(m$Group, ncol = 1, dimnames = list(m$Sample_ID, "disease"))
+})
+names(covariate.interest) <- names(feature.counts)
+```
+
+# Structure-learning meta-analysis given all samples of all participating studies
+
+There are two approaches miMeta can run SMESH.
+
+Approach #1: If the individual-level sample data across all
+participating studies are available, the function `smesh` can take these
+data as input to generate summary association statistics for each study,
+combine the studies of each context into context-level summary
+statistics, and learn the context clusters together with the
+all-cluster-shared and context-dependent signatures.
+
+Approach #2: If individual-level samples of each study are not in a
+central place, summary statistics can be generated for each study
+separately using the functions `palm.null.model` and `palm.get.summary`
+in the PALM package, and combined into context-level summary statistics
+using the function `palm.meta.summary`. The context-level summary
+statistics can be transported to a central place to learn the context
+clusters and signatures using the function `smesh.summary`.
+
+We demonstrate Approach #1 in this section and Approach #2 in the next
+section.
+
+Each simulated context is a single study, so `context` is left at
+`NULL`. When several studies address the same context, `context` maps
+each study to its context, and `smesh` combines the studies of a context
+before the clusters are learned. `covariate.adjust` and `cluster` pass
+covariates to adjust for and the subject identity of repeated measures
+to PALM; the simulated data have neither. With the default `G = NULL`,
+the number of clusters is selected by the minimum GIC.
+
+```{r smesh_fit, echo=TRUE, message=FALSE, warning=FALSE}
+smesh.result <- smesh(feature.counts = feature.counts,
+                      covariate.interest = covariate.interest,
+                      verbose = TRUE)
+```
+
+The result is a list with one element per covariate of interest. Ours is
+named `disease`.
+
+```{r echo=TRUE}
+smesh.model <- smesh.result$disease
+names(smesh.model)
+```
+
+- `effects` is the feature-by-cluster matrix of final association effect
+  estimates, from the post-selection refit. A feature with a nonzero
+  entry in at least one cluster is a selected signature; `NA` marks a
+  cluster in which no context could estimate the feature.
+- `context_assignments` gives the cluster each context is assigned to.
+- `posterior_membership` and `mixing_proportions` describe the fitted
+  mixture.
+- `gic` is the generalized information criterion of the fit.
+- `diagnostics` holds computational diagnostics, described under
+  *Interpreting and checking the fit* below.
+
+## Which contexts cluster together
+
+```{r echo=TRUE}
+smesh.model$context_assignments
+```
+
+Cluster labels are arbitrary, so the learned clusters are compared with
+the true clusters by cross-tabulating the contexts:
+
+```{r echo=TRUE}
+table(learned = smesh.model$context_assignments$cluster,
+      truth   = sim_data$sim_truth$cluster[smesh.model$context_assignments$context])
+```
+
+## Which features are selected, and where
+
+The signatures split into those selected in every cluster in which they
+are estimable and those selected in only some of them. This is the distinction SMESH exists to
+make. `signature_table()` lists them, one row per signature, with its
+sharing category, the clusters in which it is selected, and its final
+effect in each cluster:
+
+```{r echo=TRUE}
+sig <- signature_table(smesh.result)
+head(sig)
+table(sig$sharing)
+```
+
+`plot_signatures()` draws the same table as a heat map, the tutorial
+counterpart of panel A of the paper's real-data figures: one column per
+cluster, one row per signature, grouped by sharing category.
+
+```{r signature_heatmap, echo=TRUE, fig.height=7}
+plot_signatures(smesh.result)
+```
+
+Features in the all-cluster-shared block are selected as associated in
+every cluster in which they are estimable; their effect magnitudes and
+directions may differ across clusters. Features in the other blocks are selected in only a subset of
+clusters; pooling across all contexts may attenuate, cancel, or obscure
+these heterogeneous effects.
+
+The selected signatures can be checked against the true ones. Each true
+signature is listed with the clusters in which SMESH selected it, and
+"not selected" marks a true signature that was missed:
+
+```{r echo=TRUE}
+truth <- sim_data$sim_truth$signatures
+table(truth    = truth$sharing,
+      selected = ifelse(truth$feature %in% sig$feature,
+                        sig$active_clusters[match(truth$feature, sig$feature)],
+                        "not selected"))
+
+## Selected features that are not true signatures
+setdiff(sig$feature, truth$feature)
+```
+
+# Structure-learning meta-analysis given summary statistics
+
+If the individual-level samples cannot be brought to one place, or if
+you would rather use alternative summary statistics, run SMESH in two
+steps. The two steps below repeat what `smesh` does internally in the
+previous section.
+
+## Step 1: generate the summary statistics and aggregate them to context level
+
+If the data of different studies live in different locations and cannot
+be conveniently shared among studies, we can first generate summary
+statistics for each study and combine the studies of each context into a
+single context-level estimate and standard error.
+
+```{r summary_stats, echo=TRUE, message=FALSE, warning=FALSE}
+# One summary statistic per study, with the same inputs smesh() used above
+null.obj <- PALM::palm.null.model(feature.counts = feature.counts,
+                                  prev.filter = 0.1)
+
+# correct = "tune" is smesh()'s default; PALM's own default is "median"
+study.stats <- PALM::palm.get.summary(null.obj = null.obj,
+                                      covariate.interest = covariate.interest,
+                                      correct = "tune")
+
+# Each simulated context is a single study, so the per-study summaries are
+# already the context-level summaries
+context.stats <- study.stats
+str(context.stats[[1]], max.level = 1)
+```
+
+When several studies address the same context, combine them by
+fixed-effect meta-analysis with `palm.meta.summary`, which is what
+`smesh` does when `context` is supplied. With `min.context`, `smesh`
+further keeps only the features estimable in at least that many
+contexts. The chunk below shows both steps; it is not run here, because
+the simulated data have one study per context.
+
+```{r combine_studies, echo=TRUE, eval=FALSE}
+# `context` maps study identifiers to context labels, for example
+# context <- c(study_A = "CRC", study_B = "CRC", study_C = "IBD")
+
+# (a) Combine the studies of each context by fixed-effect meta-analysis
+context.stats <- list()
+for(ctx in unique(context)){
+  keep <- names(study.stats)[context[names(study.stats)] == ctx]
+  res <- PALM::palm.meta.summary(summary.stats = study.stats[keep])
+
+  feature.ID <- Reduce(union, lapply(res, function(x) x$feature))
+  est.mat <- se.mat <- matrix(NA_real_, length(feature.ID), length(res),
+                              dimnames = list(feature.ID, names(res)))
+  for(cov.int in names(res)){
+    est.mat[res[[cov.int]]$feature, cov.int] <- res[[cov.int]]$coef
+    se.mat[res[[cov.int]]$feature, cov.int]  <- res[[cov.int]]$stderr
+  }
+  context.stats[[ctx]] <- list(est = est.mat, stderr = se.mat,
+                               n = sum(sapply(study.stats[keep], function(d) d$n)))
+}
+
+# (b) Keep the features estimable in at least `min.context` contexts
+min.context <- 2
+n.context <- table(unlist(lapply(context.stats, function(d)
+  rownames(d$est)[rowSums(!is.na(d$est)) > 0])))
+keep.ID <- names(n.context)[n.context >= min.context]
+context.stats <- lapply(context.stats, function(d) {
+  id <- intersect(keep.ID, rownames(d$est))
+  d$est    <- d$est[id, , drop = FALSE]
+  d$stderr <- d$stderr[id, , drop = FALSE]
+  d
+})
+```
+
+**Customizing the summary statistics.** `smesh.summary` only requires that
+each element of the list is one context, named by context label, holding
+
+- `est` — a feature-by-covariate matrix of association coefficient
+  estimates,
+- `stderr` — the matching matrix of standard errors, and
+- `n` — the number of samples behind the context,
+
+with `NA` wherever a context could not estimate a feature. Feature
+identifiers must be harmonized, so that the same identifier denotes the
+same microbial feature in every context. Alternative summary statistics
+from any association model that yields a coefficient and a standard
+error per feature can fill those matrices; only the way `est` and
+`stderr` are produced changes, and the rest of this section is
+unaffected.
+
+## Step 2: run the structure-learning meta-analysis
+
+```{r smesh_summary_fit, echo=TRUE, message=FALSE, warning=FALSE}
+smesh.result.2 <- smesh.summary(summary.stats = context.stats, verbose = TRUE)
+smesh.model.2 <- smesh.result.2$disease
+```
+
+The clusters and the signatures agree with those from `smesh` in the
+previous section, as they should — Step 1 produces the same context-level
+summary statistics that `smesh` builds internally, and both routes then
+use the same estimator.
+
+```{r echo=TRUE}
+smesh.model.2$context_assignments
+```
+
+```{r signature_heatmap_2, echo=TRUE, fig.height=7}
+plot_signatures(smesh.result.2, title = "Cluster-level association effects, from summary statistics")
+```
+
+A direct comparison of the two routes:
+
+```{r echo=TRUE}
+data.frame(
+  route      = c("smesh", "smesh.summary"),
+  contexts   = c(nrow(smesh.model$context_assignments), nrow(smesh.model.2$context_assignments)),
+  clusters   = c(ncol(smesh.model$effects), ncol(smesh.model.2$effects)),
+  signatures = c(nrow(signature_table(smesh.result)), nrow(signature_table(smesh.result.2))),
+  gic        = round(c(smesh.model$gic, smesh.model.2$gic), 4)
+)
+```
+
+# Interpreting and checking the fit
+
+## Selected number of clusters
+
+With `G = NULL`, the number of clusters is chosen by the minimum
+generalized information criterion (GIC): every candidate `G` from 1 to
+`round(2L/3)`, for `L` contexts, is fitted, and the one with the smallest
+GIC is kept. The search path shows the GIC at each candidate `G` and which
+one was selected; `gic` is the GIC of the reported model.
+
+```{r echo=TRUE}
+smesh.model$diagnostics$gic_path
+smesh.model$gic
+```
+
+## Posterior cluster membership
+
+`context_assignments` gives the cluster of each context and the
+posterior probability of that cluster under the fitted mixture;
+`posterior_membership` gives the full context-by-cluster matrix. A
+probability well below one marks a context whose assignment is
+uncertain.
+
+```{r echo=TRUE}
+round(smesh.model$posterior_membership, 3)
+```
+
+## Computational check
+
+SMESH uses multiple random starts to reduce sensitivity to local optima;
+`nstart` sets how many (20 by default). At each candidate number of
+clusters and support size, the reported fit is the converged start with
+the smallest GIC. The diagnostics record how many starts converged and
+which one was retained. They describe the optimization on these data and
+should not be interpreted as robustness to changes in the observed data.
+
+```{r echo=TRUE}
+c(
+  converged_starts =
+    sum(smesh.model$diagnostics$restart_convergence),
+  total_starts =
+    length(smesh.model$diagnostics$restart_convergence),
+  selected_restart =
+    smesh.model$diagnostics$selected_restart
+)
+```
+
+# Session information
+
+```{r}
+sessionInfo()
+```
+
+# Reference
+
+1.  Wei Z, Chen G, Tang ZZ. Structure-learning meta-analysis resolves
+    cross-context heterogeneity in microbiome associations. Submitted.
+
+2.  Wei Z, Hong Q, Chen G, Hartert TV, Rosas-Salazar C, Das SR, Shilts
+    MH, Levin AM, Tang ZZ. Fast and reliable association discovery in
+    large-scale microbiome studies and meta-analyses using PALM.
+    bioRxiv. 2026. <doi:10.64898/2026.04.09.717497>.
+
+3.  He M, Zhao N, Satten GA. MIDASim: a fast and simple simulator for
+    realistic microbiome data. Microbiome. 2024;12:135.
+    doi:10.1186/s40168-024-01822-z.

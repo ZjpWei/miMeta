@@ -1,26 +1,24 @@
-#' @title Meta-analysis for selecting microbial signatures associated with covariate of interests.
+#' @title Meta-analysis for selecting microbial signatures associated with covariates of interest
 #'
 #' @description Melody is a meta-analysis method designed to account for the unique features of compositional microbiome data
 #' in selecting microbial signatures.
 #'
 #' @author Zhoujingpeng Wei, Guanhua Chen, Zheng-Zheng Tang
 #'
-#' @param rel.abd A list of matrices for relative abundance counts. Each element of the list pertains to one study,
-#' and the name of each element must be the study ID. Each matrix must have sample IDs as row names and microbial feature IDs as column names.
-#' No missing value is allowed.
+#' @param feature.counts A named list of sample-by-feature matrices of nonnegative sequencing read counts, with one matrix per study. The list names must be the study identifiers; matrix row names and column names must be sample and microbial-feature identifiers, respectively. Row sums are used as sequencing-depth measures. The counts should not be converted to proportions or normalized. Missing values are not allowed.
 #' @param covariate.interest A list of matrices for single or multiple covariates of interest. Each element of the list pertains to one study, and the name of each element must be
 #' the study ID. In a matrix of a given study, each row is a sample, and each column is a covariate of interest and can only be a numeric vector.
-#' The set of covariates can be different among studies. In a given study, the order of samples should be matched with the order in "rel.abd". No missing value is allowed.
+#' The set of covariates can be different among studies. In a given study, the order of samples should be matched with the order in "feature.counts". No missing value is allowed.
 #' @param covariate.adjust A list of data frames for covariates that will be adjusted for in the model. Each element of the list pertains to one study,
 #' and the name of each element must be the study ID. In a data frame of a given study, each row is a sample, and each column is a covariate to be adjusted and can only be a factor or numeric vector.
-#' The set of covariates can be different among studies. In a given study, the order of samples should be matched with the order in "rel.abd". No missing value is allowed.
+#' The set of covariates can be different among studies. In a given study, the order of samples should be matched with the order in "feature.counts". No missing value is allowed.
 #' Default is NULL (not adjusting for any covariates)
 #' @param cluster A list of vectors of variable that define the sample cluster for studies with correlated samples. Each element of the list pertains to one study with correlated samples,
-#' and the name of each element must be the study ID. The order of samples should be matched with the order in "rel.abd" in the corresponding study.
+#' and the name of each element must be the study ID. The order of samples should be matched with the order in "feature.counts" in the corresponding study.
 #' For example, the values of this variable are subject IDs if each subject has multiple correlated samples
 #' (e.g., measured in a longitudinal study). Default is NULL (all samples in all studies are independent, so no need to provide this input.).
 #' @param depth.filter A cutoff value to remove samples with sequencing depth less than or equal to the cutoff. Default is 0.
-#' @param prev.filter A cutoff value remove microbial features with prevalence (proportion of nonzero observations)
+#' @param prev.filter A cutoff value to remove microbial features with prevalence (proportion of nonzero observations)
 #' less than or equal to the cutoff. This cutoff is applied to each study. So, a feature could be removed in a subset of the studies. The cutoff value must be in the range of 0-1. Default is 0.1.
 #' @param ref A feature ID or a vector of feature IDs. If a feature ID is provided, this microbial feature will be used as the reference in all studies when generating summary statistics.
 #' If a vector of feature IDs is provided, each feature in the vector will be the reference for a study. Therefore, the length of the vector should be equal to the number of studies and have study IDs as names.
@@ -38,10 +36,10 @@
 #' @param NMAX The maximum number of iterations in the search for the best delta tuning parameters. Default is 20.
 #' @param parallel.core The number of cores to be concurrently used for generating summary statistics.
 #' It's an integer between 1 and cl - 1 (cl is the total core number). Default is cl - 1.
-#' @param ouput.best.one Whether only output the best model. Default is TRUE.
-#' @param verbose: Whether to print verbose information. Default is FALSE. (see details in Value)
+#' @param output.best.one Whether only output the best model. Default is TRUE.
+#' @param verbose Whether to print verbose information. Default is FALSE. (see details in Value)
 #'
-#' @return Output a list with each component for a covariate of interest.
+#' @return Returns a list with each component for a covariate of interest.
 #'
 #' If output.best.one=TRUE (default), the component includes the following elements to deliver the meta-analysis results under the best model over the subset sizes considered.
 #' \item{coef}{A coefficient vector that contains the meta association coefficient estimate (at the absolute-abundance level) under the best subset size. The vector names are microbial features IDs. The microbial features with nonzero coefficients are the selected signatures.}
@@ -67,7 +65,7 @@
 #' (i.e. the number of microbial features selected) and delta's which are introduced to recover the
 #' absolute-abundance coefficients from the relative-abundance coefficients. (details in reference Wei et al.)
 #'
-#' @references Wei Z, Chen G, Tang ZZ. Melody: Meta-analysis of Microbiome Association Studies for Discovering Generalizable Microbial Signatures. Submitted.
+#' @references Wei Z, Chen G, Tang ZZ. Melody: meta-analysis of microbiome association studies for discovering generalizable microbial signatures. Genome Biology. 2025;26:245. doi:10.1186/s13059-025-03721-4.
 #'
 #' @seealso \code{\link{melody.get.summary}},
 #' \code{\link{melody.meta.summary}},
@@ -84,21 +82,21 @@
 #' CRC_meta <- CRC_data$CRC_meta
 #'
 #' ########## Generate summary statistics ##########
-#' rel.abd <- list()
+#' feature.counts <- list()
 #' covariate.interest <- list()
 #' for(d in unique(CRC_meta$Study)){
-#'   rel.abd[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
+#'   feature.counts[[d]] <- CRC_abd[CRC_meta$Sample_ID[CRC_meta$Study == d],]
 #'   disease <- as.numeric(CRC_meta$Group[CRC_meta$Study == d] == "CRC")
 #'   names(disease) <- CRC_meta$Sample_ID[CRC_meta$Study == d]
 #'   covariate.interest[[d]] <- matrix(disease, ncol = 1, dimnames = list(names(disease), "disease"))
 #' }
 #'
-#' meta.result <- melody(rel.abd = rel.abd, covariate.interest = covariate.interest,
+#' meta.result <- melody(feature.counts = feature.counts, covariate.interest = covariate.interest,
 #'                       ref = "Coprococcus catus [ref_mOTU_v2_4874]")
 #' }
 #'
 
-melody <- function(rel.abd,
+melody <- function(feature.counts,
                    covariate.interest,
                    covariate.adjust = NULL,
                    cluster = NULL,
@@ -120,7 +118,7 @@ melody <- function(rel.abd,
   tune.type <- match.arg(tune.type)
 
   #=== Generate summary statistics ===#
-  null.obj <- melody.null.model(rel.abd = rel.abd,
+  null.obj <- melody.null.model(feature.counts = feature.counts,
                                 covariate.adjust = covariate.adjust,
                                 depth.filter = depth.filter,
                                 prev.filter = prev.filter,
